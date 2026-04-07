@@ -10,6 +10,9 @@ Rails.application.routes.draw do
       patch "studio",     to: "studios#update"
       post "studio/logo", to: "studios#upload_logo"
       post "studio/watermark", to: "studios#upload_watermark"
+      resources :weddings, param: :slug, except: [ :new, :edit ] do
+        post :hero, on: :member, action: :upload_hero
+      end
     end
   end
 end

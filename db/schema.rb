@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_07_201500) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_08_184000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -37,4 +37,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_07_201500) do
     t.index ["email"], name: "index_studios_on_email", unique: true
     t.index ["slug"], name: "index_studios_on_slug", unique: true
   end
+
+  create_table "weddings", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.boolean "allow_comments", default: true, null: false
+    t.string "allow_download", default: "shortlist", null: false
+    t.string "couple_name", null: false
+    t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
+    t.string "hero_image_key"
+    t.string "hero_image_url"
+    t.boolean "is_active", default: true, null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.string "password_hash", null: false
+    t.string "slug", null: false
+    t.uuid "studio_id", null: false
+    t.integer "total_photos", default: 0, null: false
+    t.integer "total_videos", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.date "wedding_date"
+    t.index ["studio_id", "slug"], name: "index_weddings_on_studio_id_and_slug", unique: true
+    t.index ["studio_id"], name: "index_weddings_on_studio_id"
+  end
+
+  add_foreign_key "weddings", "studios"
 end
