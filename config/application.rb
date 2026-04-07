@@ -19,6 +19,8 @@ module WeddingGalleryApi
     config.load_defaults 8.1
 
     config.autoload_lib(ignore: %w[assets tasks])
+    config.autoload_paths << Rails.root.join("app/blueprints")
+    config.eager_load_paths << Rails.root.join("app/blueprints")
 
     # Only loads a smaller set of middleware suitable for API only apps.
     # Middleware like session, flash, cookies can be added back manually.

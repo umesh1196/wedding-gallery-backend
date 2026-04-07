@@ -1,0 +1,635 @@
+openapi: 3.0.3
+info:
+  title: Wedding Gallery Backend API
+  version: 0.1.0
+  description: |
+    Swagger-style API contract for the currently available endpoints in this app.
+    The request and response examples below reflect the existing implementation.
+servers:
+  - url: http://127.0.0.1:3000
+    description: Local development
+tags:
+  - name: Health
+  - name: Auth
+  - name: Studio
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: App health check
+      operationId: healthCheck
+      responses:
+        "200":
+          description: App is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: ok
+
+  /up:
+    get:
+      tags:
+        - Health
+      summary: Rails health check
+      operationId: railsHealthCheck
+      responses:
+        "200":
+          description: Rails is healthy
+          content:
+            text/html:
+              schema:
+                type: string
+              example: "<!DOCTYPE html><html><body style=\"background-color: green\"></body></html>"
+
+  /api/v1/auth/signup:
+    post:
+      tags:
+        - Auth
+      summary: Create a studio account
+      operationId: signup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - studio
+              properties:
+                studio:
+                  $ref: "#/components/schemas/SignupRequestStudio"
+            example:
+              studio:
+                email: live-test-20260407@studio.com
+                password: pass1234
+                studio_name: My Studio
+      responses:
+        "201":
+          description: Studio created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSuccessResponse"
+              example:
+                success: true
+                data:
+                  token: eyJhbGciOiJIUzI1NiJ9.example
+                  studio:
+                    id: b3d7cb31-4dae-4faf-9690-5335408926c5
+                    email: live-test-20260407@studio.com
+                    phone: null
+                    plan: free
+                    plan_expires_at: null
+                    slug: my-studio-1
+                    studio_name: My Studio
+        "400":
+          description: Missing required request params
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                error:
+                  message: "param is missing or the value is empty: studio"
+                  code: bad_request
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                error:
+                  message: Email has already been taken
+                  code: validation_error
+
+  /api/v1/auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Authenticate a studio
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - studio
+              properties:
+                studio:
+                  $ref: "#/components/schemas/LoginRequestStudio"
+            example:
+              studio:
+                email: live-test-20260407@studio.com
+                password: pass1234
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSuccessResponse"
+              example:
+                success: true
+                data:
+                  token: eyJhbGciOiJIUzI1NiJ9.example
+                  studio:
+                    id: b3d7cb31-4dae-4faf-9690-5335408926c5
+                    email: live-test-20260407@studio.com
+                    phone: null
+                    plan: free
+                    plan_expires_at: null
+                    slug: my-studio-1
+                    studio_name: My Studio
+        "400":
+          description: Missing required request params
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                error:
+                  message: "param is missing or the value is empty: studio"
+                  code: bad_request
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                error:
+                  message: Invalid email or password
+                  code: invalid_credentials
+
+  /api/v1/auth/me:
+    get:
+      tags:
+        - Auth
+      summary: Fetch the current authenticated studio
+      operationId: currentStudio
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current studio profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeSuccessResponse"
+              example:
+                success: true
+                data:
+                  id: b3d7cb31-4dae-4faf-9690-5335408926c5
+                  email: live-test-20260407@studio.com
+                  phone: null
+                  plan: free
+                  plan_expires_at: null
+                  slug: my-studio-1
+                  studio_name: My Studio
+        "401":
+          description: Missing, invalid, or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                error:
+                  message: Unauthorized
+                  code: unauthorized
+
+  /api/v1/studio:
+    patch:
+      tags:
+        - Studio
+      summary: Update the current studio profile and branding
+      operationId: updateStudio
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - studio
+              properties:
+                studio:
+                  $ref: "#/components/schemas/StudioUpdateRequest"
+            example:
+              studio:
+                studio_name: Updated Studio
+                slug: updated-brand
+                phone: "+919999999999"
+                color_primary: "#112233"
+                color_accent: "#c0ffee"
+                font_heading: Lora
+                font_body: DM Sans
+                logo_url: https://cdn.example.com/logo.png
+                watermark_url: https://cdn.example.com/watermark.png
+                watermark_opacity: 0.55
+      responses:
+        "200":
+          description: Updated studio profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeSuccessResponse"
+              example:
+                success: true
+                data:
+                  id: b3d7cb31-4dae-4faf-9690-5335408926c5
+                  email: live-test-20260407@studio.com
+                  phone: "+919999999999"
+                  plan: free
+                  plan_expires_at: null
+                  slug: updated-brand
+                  studio_name: Updated Studio
+                  logo_url: https://cdn.example.com/logo.png
+                  color_primary: "#112233"
+                  color_accent: "#c0ffee"
+                  font_heading: Lora
+                  font_body: DM Sans
+                  watermark_url: https://cdn.example.com/watermark.png
+                  watermark_opacity: "0.55"
+        "401":
+          description: Missing, invalid, or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                error:
+                  message: Unauthorized
+                  code: unauthorized
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                error:
+                  message: Slug has already been taken
+                  code: validation_error
+
+  /api/v1/studio/logo:
+    post:
+      tags:
+        - Studio
+      summary: Upload the current studio logo
+      operationId: uploadStudioLogo
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Logo uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadAssetResponse"
+              example:
+                success: true
+                data:
+                  key: studios/b3d7cb31-4dae-4faf-9690-5335408926c5/logo.svg
+                  url: https://cdn.example.com/logo.svg
+        "401":
+          description: Missing, invalid, or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                error:
+                  message: Unauthorized
+                  code: unauthorized
+        "422":
+          description: Invalid upload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                error:
+                  message: Unsupported file type
+                  code: invalid_upload
+
+  /api/v1/studio/watermark:
+    post:
+      tags:
+        - Studio
+      summary: Upload the current studio watermark
+      operationId: uploadStudioWatermark
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Watermark uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadAssetResponse"
+              example:
+                success: true
+                data:
+                  key: studios/b3d7cb31-4dae-4faf-9690-5335408926c5/watermark.svg
+                  url: https://cdn.example.com/watermark.svg
+        "401":
+          description: Missing, invalid, or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                error:
+                  message: Unauthorized
+                  code: unauthorized
+        "422":
+          description: Invalid upload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                error:
+                  message: File size must be less than 2MB
+                  code: invalid_upload
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          example: ok
+
+    Studio:
+      type: object
+      required:
+        - id
+        - email
+        - studio_name
+        - slug
+        - plan
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          nullable: true
+        plan:
+          type: string
+          example: free
+        plan_expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        logo_url:
+          type: string
+          format: uri
+          nullable: true
+        color_primary:
+          type: string
+          example: "#1a1a1a"
+        color_accent:
+          type: string
+          example: "#c9a96e"
+        font_heading:
+          type: string
+          example: Playfair Display
+        font_body:
+          type: string
+          example: Inter
+        watermark_url:
+          type: string
+          format: uri
+          nullable: true
+        watermark_opacity:
+          type: string
+          example: "0.30"
+        slug:
+          type: string
+          example: my-studio
+        studio_name:
+          type: string
+          example: My Studio
+
+    SignupRequestStudio:
+      type: object
+      required:
+        - email
+        - password
+        - studio_name
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 1
+        password_confirmation:
+          type: string
+        studio_name:
+          type: string
+        phone:
+          type: string
+          nullable: true
+
+    LoginRequestStudio:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    StudioUpdateRequest:
+      type: object
+      properties:
+        studio_name:
+          type: string
+        slug:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        logo_url:
+          type: string
+          format: uri
+        color_primary:
+          type: string
+          example: "#112233"
+        color_accent:
+          type: string
+          example: "#c0ffee"
+        font_heading:
+          type: string
+          enum:
+            - Inter
+            - Playfair Display
+            - Lora
+            - Cormorant Garamond
+            - Montserrat
+            - Poppins
+            - DM Sans
+        font_body:
+          type: string
+          enum:
+            - Inter
+            - Playfair Display
+            - Lora
+            - Cormorant Garamond
+            - Montserrat
+            - Poppins
+            - DM Sans
+        watermark_url:
+          type: string
+          format: uri
+        watermark_opacity:
+          type: number
+          minimum: 0
+          maximum: 1
+
+    AuthSuccessData:
+      type: object
+      required:
+        - token
+        - studio
+      properties:
+        token:
+          type: string
+        studio:
+          $ref: "#/components/schemas/Studio"
+
+    AuthSuccessResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          $ref: "#/components/schemas/AuthSuccessData"
+
+    UploadAssetData:
+      type: object
+      required:
+        - key
+        - url
+      properties:
+        key:
+          type: string
+        url:
+          type: string
+          format: uri
+
+    UploadAssetResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          $ref: "#/components/schemas/UploadAssetData"
+
+    MeSuccessResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          $ref: "#/components/schemas/Studio"
+
+    ErrorDetail:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+          nullable: true
+
+    ErrorResponse:
+      type: object
+      required:
+        - success
+        - error
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        error:
+          $ref: "#/components/schemas/ErrorDetail"

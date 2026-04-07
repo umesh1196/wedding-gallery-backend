@@ -16,8 +16,12 @@ module Storage
       "studios/#{studio_id}/weddings/#{wedding_id}/ceremonies/#{ceremony_id}/cover.jpg"
     end
 
-    def self.studio_logo(studio_id:)
-      "studios/#{studio_id}/logo.jpg"
+    def self.studio_logo(studio_id:, ext: "jpg")
+      "studios/#{studio_id}/logo.#{ext}"
+    end
+
+    def self.studio_watermark(studio_id:, ext: "jpg")
+      "studios/#{studio_id}/watermark.#{ext}"
     end
 
     def self.wedding_prefix(studio_id:, wedding_id:)
