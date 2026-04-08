@@ -2,6 +2,7 @@ class Shortlist < ApplicationRecord
   belongs_to :wedding
   belongs_to :gallery_session
   has_many :shortlist_photos, -> { order(:sort_order, :id) }, dependent: :destroy
+  has_many :download_requests, dependent: :nullify
   has_many :photos, through: :shortlist_photos
 
   validates :gallery_session_id, uniqueness: { scope: :wedding_id }

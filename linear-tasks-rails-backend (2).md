@@ -1329,11 +1329,14 @@ add_index :shortlist_photos, [:shortlist_id, :photo_id], unique: true
 `GET /api/v1/g/.../photos/:id/download`
 
 - [ ] Check wedding `allow_download` permission
+- [ ] Centralize permission checks in a shared download policy/service
+- [ ] Always download the gallery-managed original JPEG asset, never a preview/thumbnail variant
 - [ ] Generate signed URL via `Storage::Service.presigned_download_url` with `filename:` param
-- [ ] Return redirect to signed URL (or return URL in JSON)
-- [ ] Log download event
+- [ ] Return signed URL in JSON response (frontend can redirect)
+- [ ] Include URL expiry metadata for client UX
+- [ ] Log download event or record audit metadata for future reporting
 
-**Acceptance:** Downloads respect permission settings. Provider-agnostic signed URL generated.
+**Acceptance:** Downloads respect permission settings. Provider-agnostic signed URL generated from the gallery original JPEG. Single-download endpoint stays synchronous and lightweight.
 
 ---
 
@@ -1351,14 +1354,23 @@ add_index :shortlist_photos, [:shortlist_id, :photo_id], unique: true
 ```
 
 - [ ] Create `downloads` table to track request status
+- [ ] Store scope (`ceremony`, `shortlist`, `full_gallery`) and request owner (`gallery_session`)
 - [ ] Enqueue `ZipGenerationJob`
-- [ ] Job: download photos via `Storage::Service.download_to_tempfile` → create ZIP in tmp → upload ZIP via `Storage::Service.upload` → generate signed URL
+- [ ] Create a shared scope resolver/service used by both single and bulk downloads
+- [ ] Job: download original JPEGs via `Storage::Service.download_to_tempfile` → create ZIP in tmp → upload ZIP via `Storage::Service.upload_file` → generate signed URL
 - [ ] Status polling endpoint: `GET /api/v1/g/.../downloads/:id`
 - [ ] ZIP expires after 24 hours (cleanup job deletes from storage)
 - [ ] Limit: check download permission per wedding settings
-- [ ] Full gallery ZIP may be large — chunk into multiple ZIPs if > 2GB
+- [ ] Use a dedicated downloads queue
+- [ ] Reject or fail cleanly if archive exceeds first-pass size limit; multi-ZIP chunking can follow later
 
 **Acceptance:** Request ZIP → job processes → poll status → download via provider-agnostic signed URL.
+
+**Scope Notes**
+- Single photo download and bulk archive download must share the same permission policy.
+- Guest downloads should always return the gallery-managed original JPEG, not preview or thumbnail derivatives.
+- First pass should support ceremony, shortlist, and full-gallery scopes without introducing multi-part ZIP orchestration.
+- Multi-ZIP chunking is deferred until real archive sizes justify it.
 
 ---
 
@@ -1455,7 +1467,229 @@ end
 
 ---
 
-## Epic 13: Deployment & DevOps
+## Epic 13: Albums & Private Sharing
+
+### ALBUM-1: Create albums table and model
+**Priority:** Medium | **Estimate:** 2 points
+
+Albums are curated photo collections within a ceremony. There are two album types:
+- `studio_curated` — official albums created by the studio
+- `user_created` — personal albums created by a gallery user/session
+
+Albums are distinct from shortlists and distinct from full-gallery share links.
+
+```ruby
+create_table :albums, id: :uuid do |t|
+  t.references :ceremony, type: :uuid, foreign_key: true, null: false
+  t.references :created_by_studio, type: :uuid, foreign_key: { to_table: :studios }
+  t.references :created_by_gallery_session, type: :uuid, foreign_key: { to_table: :gallery_sessions }
+  t.string :album_type, null: false  # studio_curated | user_created
+  t.string :name, null: false
+  t.string :slug, null: false
+  t.text :description
+  t.references :cover_photo, type: :uuid, foreign_key: { to_table: :photos }
+  t.string :visibility, default: "private", null: false  # private | shared
+  t.timestamps
+end
+
+add_index :albums, [:ceremony_id, :slug], unique: true
+```
+
+- [ ] Add `Album` model with slug generation scoped to ceremony
+- [ ] Require exactly one creator path:
+  - studio albums use `created_by_studio_id`
+  - user albums use `created_by_gallery_session_id`
+- [ ] Keep albums independent from visitor shortlists
+- [ ] Validate cover photo belongs to the same ceremony
+- [ ] Validate `album_type` matches the creator type
+
+**Acceptance:** Both studio-curated albums and user-created albums can exist under a ceremony with clear ownership rules.
+
+---
+
+### ALBUM-2: Create album_photos join table
+**Priority:** Medium | **Estimate:** 1 point
+
+```ruby
+create_table :album_photos, id: :uuid do |t|
+  t.references :album, type: :uuid, foreign_key: true, null: false
+  t.references :photo, type: :uuid, foreign_key: true, null: false
+  t.integer :sort_order, default: 0, null: false
+  t.timestamps
+end
+
+add_index :album_photos, [:album_id, :photo_id], unique: true
+add_index :album_photos, [:album_id, :sort_order]
+```
+
+- [ ] Add `AlbumPhoto` model
+- [ ] Validate photo belongs to album ceremony
+- [ ] Support stable manual ordering
+- [ ] Prevent duplicate photo membership per album
+
+**Acceptance:** Both studio-curated and user-created albums can contain ordered photos from exactly one ceremony.
+
+---
+
+### ALBUM-3: Build studio-curated album management APIs
+**Priority:** High | **Estimate:** 2 points
+
+**`POST /api/v1/weddings/:wedding_slug/ceremonies/:ceremony_slug/albums`**
+```json
+{
+  "album": {
+    "name": "Bride's Family Favorites",
+    "description": "Curated photos for close family",
+    "album_type": "studio_curated"
+  }
+}
+```
+
+**`GET /api/v1/weddings/:wedding_slug/ceremonies/:ceremony_slug/albums`**
+**`GET /api/v1/weddings/:wedding_slug/ceremonies/:ceremony_slug/albums/:slug`**
+**`PATCH /api/v1/weddings/:wedding_slug/ceremonies/:ceremony_slug/albums/:slug`**
+**`DELETE /api/v1/weddings/:wedding_slug/ceremonies/:ceremony_slug/albums/:slug`**
+
+- [ ] Add album CRUD for authenticated studios
+- [ ] Restrict this route family to `studio_curated` albums
+- [ ] Return cover photo and photo counts
+- [ ] Keep album routes nested under ceremony
+- [ ] Soft-delete is optional; hard delete is acceptable in first pass
+
+**Acceptance:** Studios can create, edit, list, and delete official curated albums for a ceremony.
+
+---
+
+### ALBUM-4: Build user-created album APIs
+**Priority:** High | **Estimate:** 2 points
+
+**`POST /api/v1/g/:studio_slug/:wedding_slug/ceremonies/:ceremony_slug/albums`**
+```json
+{
+  "album": {
+    "name": "Our Family Picks",
+    "description": "Photos we want to share",
+    "album_type": "user_created"
+  }
+}
+```
+
+**`GET /api/v1/g/:studio_slug/:wedding_slug/ceremonies/:ceremony_slug/albums`**
+**`GET /api/v1/g/:studio_slug/:wedding_slug/ceremonies/:ceremony_slug/albums/:slug`**
+**`PATCH /api/v1/g/:studio_slug/:wedding_slug/ceremonies/:ceremony_slug/albums/:slug`**
+**`DELETE /api/v1/g/:studio_slug/:wedding_slug/ceremonies/:ceremony_slug/albums/:slug`**
+
+- [ ] Require active gallery session auth
+- [ ] Only expose `user_created` albums owned by the current gallery session
+- [ ] Keep user albums private by default
+- [ ] Ensure session can only create albums inside the current ceremony
+
+**Acceptance:** A gallery user can create and manage their own ceremony-scoped album without seeing other users’ private albums.
+
+---
+
+### ALBUM-5: Build album photo curation APIs
+**Priority:** High | **Estimate:** 2 points
+
+**Studio**
+- `POST /api/v1/weddings/:wedding_slug/ceremonies/:ceremony_slug/albums/:album_slug/photos`
+- `DELETE /api/v1/weddings/:wedding_slug/ceremonies/:ceremony_slug/albums/:album_slug/photos/:photo_id`
+- `PATCH /api/v1/weddings/:wedding_slug/ceremonies/:ceremony_slug/albums/:album_slug/reorder`
+- `POST /api/v1/weddings/:wedding_slug/ceremonies/:ceremony_slug/albums/:album_slug/cover`
+
+**Gallery user**
+- `POST /api/v1/g/:studio_slug/:wedding_slug/ceremonies/:ceremony_slug/albums/:album_slug/photos`
+- `DELETE /api/v1/g/:studio_slug/:wedding_slug/ceremonies/:ceremony_slug/albums/:album_slug/photos/:photo_id`
+- `PATCH /api/v1/g/:studio_slug/:wedding_slug/ceremonies/:ceremony_slug/albums/:album_slug/reorder`
+- `POST /api/v1/g/:studio_slug/:wedding_slug/ceremonies/:ceremony_slug/albums/:album_slug/cover`
+
+- [ ] Add/remove photos from album
+- [ ] Reorder album photos
+- [ ] Set album cover from one of the album photos
+- [ ] Validate all curated photos belong to the same ceremony
+- [ ] Enforce ownership:
+  - studio can manage `studio_curated`
+  - album owner session can manage `user_created`
+
+**Acceptance:** Album contents and order can be curated without affecting the main ceremony/gallery ordering, with ownership enforced correctly.
+
+---
+
+### ALBUM-6: Create album_share_links table and endpoints
+**Priority:** High | **Estimate:** 2 points
+
+Album sharing is separate from whole-gallery sharing. Shared album access should only reveal album photos.
+
+```ruby
+create_table :album_share_links, id: :uuid do |t|
+  t.references :album, type: :uuid, foreign_key: true, null: false
+  t.references :created_by_studio, type: :uuid, foreign_key: { to_table: :studios }
+  t.references :created_by_gallery_session, type: :uuid, foreign_key: { to_table: :gallery_sessions }
+  t.string :token_digest, null: false
+  t.string :permissions, default: "view", null: false  # view | view_like | view_download
+  t.string :label
+  t.datetime :expires_at
+  t.timestamps
+end
+
+add_index :album_share_links, :token_digest, unique: true
+```
+
+**Studio-created album share link**
+`POST /api/v1/weddings/:wedding_slug/ceremonies/:ceremony_slug/albums/:album_slug/share_links`
+
+**User-created album share link**
+`POST /api/v1/g/:studio_slug/:wedding_slug/ceremonies/:ceremony_slug/albums/:album_slug/share_links`
+
+```json
+{
+  "label": "For Mom & Dad",
+  "permissions": "view_download"
+}
+```
+
+**`GET /api/v1/g/albums/shared/:token`**
+
+- [ ] Store token digests, not raw tokens
+- [ ] Create album-scoped viewer session on access
+- [ ] Enforce permissions independently from whole-gallery links
+- [ ] Default expiry to wedding expiry unless overridden
+- [ ] Ensure share-link creator matches album owner type
+- [ ] Do not expose photos outside the album
+
+**Acceptance:** A studio can create a private album link that opens only that album for the recipient.
+
+---
+
+### ALBUM-7: Build public album viewing endpoints
+**Priority:** High | **Estimate:** 2 points
+
+**`GET /api/v1/g/albums/:token`**
+**`GET /api/v1/g/albums/:token/photos`**
+
+- [ ] Return album shell and paginated album photos
+- [ ] Scope all access to the album only
+- [ ] Reuse gallery photo presenters where possible
+- [ ] Ensure likes/downloads respect both wedding settings and album-link permissions
+
+**Acceptance:** Recipient opens an album link and can browse only the curated album photos with the granted permissions.
+
+---
+
+### Notes on Scope for Epic 13
+- Albums are a content model; share links are an access model.
+- Do not overload shortlist tables to act as albums.
+- Whole-gallery share links remain Epic 12; album sharing is narrower and must stay album-scoped.
+- Albums belong to a ceremony, not directly to a wedding.
+- There are two supported album types: `studio_curated` and `user_created`.
+- `studio_curated` albums are official and managed by studio auth.
+- `user_created` albums are private by default and managed only by the creating gallery session.
+- First pass should use private link-based access, not recipient email/phone invite workflows.
+- Recipient-specific invite lists or OTP verification can be a later enhancement if needed.
+
+---
+
+## Epic 14: Deployment & DevOps
 
 ### DEPLOY-1: Set up production deployment
 **Priority:** High | **Estimate:** 2 points
@@ -1510,9 +1744,10 @@ end
 | **Sprint 5** | Epic 8 (Likes + Shortlists) | Week 5 |
 | **Sprint 6** | Epic 9 (Downloads) + Epic 10 (Comments) | Week 6 |
 | **Sprint 7** | Epic 11 (Expiry) + Epic 12 (Share Links) | Week 7 |
-| **Sprint 8** | Epic 13 (Deploy) + Polish + Bug Fixes | Week 8 |
+| **Sprint 8** | Epic 13 (Albums) + Epic 14 (Deploy) | Week 8 |
+| **Sprint 9** | Polish + Bug Fixes | Week 9 |
 
-**Total: ~45 tasks · ~50 story points · 8 weeks**
+**Total: ~51 tasks · ~59 story points · 9 weeks**
 
 ---
 

@@ -8,6 +8,7 @@ class Wedding < ApplicationRecord
   has_many :photos, dependent: :destroy
   has_many :gallery_sessions, dependent: :destroy
   has_many :shortlists, dependent: :destroy
+  has_many :download_requests, dependent: :destroy
 
   before_validation :normalize_slug
   before_validation :generate_slug, if: :should_generate_slug?

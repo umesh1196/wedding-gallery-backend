@@ -1,0 +1,687 @@
+{
+  "info": {
+    "_postman_id": "9b7ed61f-c4b4-4c50-90f3-36cab9f324bd",
+    "name": "Wedding Gallery Backend",
+    "description": "Postman collection for the Wedding Gallery Rails backend through Epic 8.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://127.0.0.1:3000" },
+    { "key": "jwtToken", "value": "" },
+    { "key": "galleryToken", "value": "" },
+    { "key": "studioSlug", "value": "my-studio" },
+    { "key": "weddingSlug", "value": "priya-arjun" },
+    { "key": "ceremonySlug", "value": "haldi" },
+    { "key": "photoId", "value": "" },
+    { "key": "connectionId", "value": "" },
+    { "key": "uploadBatchId", "value": "" },
+    { "key": "shortlistId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/health"
+          }
+        },
+        {
+          "name": "GET /up",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/up"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "POST /api/v1/auth/signup",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studio\": {\n    \"email\": \"test@studio.com\",\n    \"password\": \"pass1234\",\n    \"studio_name\": \"My Studio\"\n  }\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/signup"
+          }
+        },
+        {
+          "name": "POST /api/v1/auth/login",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studio\": {\n    \"email\": \"test@studio.com\",\n    \"password\": \"pass1234\"\n  }\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/login"
+          }
+        },
+        {
+          "name": "GET /api/v1/auth/me",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/me"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Studio",
+      "item": [
+        {
+          "name": "PATCH /api/v1/studio",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studio\": {\n    \"studio_name\": \"My Studio Updated\",\n    \"slug\": \"my-studio\",\n    \"color_primary\": \"#112233\",\n    \"color_accent\": \"#c9a96e\",\n    \"font_heading\": \"Playfair Display\",\n    \"font_body\": \"Inter\",\n    \"watermark_opacity\": 0.3\n  }\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/studio"
+          }
+        },
+        {
+          "name": "POST /api/v1/studio/logo",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "" }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/studio/logo"
+          }
+        },
+        {
+          "name": "POST /api/v1/studio/watermark",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "" }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/studio/watermark"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Weddings",
+      "item": [
+        {
+          "name": "GET /api/v1/weddings",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/weddings"
+          }
+        },
+        {
+          "name": "POST /api/v1/weddings",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"wedding\": {\n    \"couple_name\": \"Priya & Arjun\",\n    \"wedding_date\": \"2026-12-31\",\n    \"password\": \"gallery123\",\n    \"expires_at\": \"2027-12-31T00:00:00Z\",\n    \"allow_download\": \"shortlist\",\n    \"allow_comments\": true,\n    \"metadata\": {\n      \"location\": \"Pune\"\n    }\n  }\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/weddings"
+          }
+        },
+        {
+          "name": "GET /api/v1/weddings/:slug",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/weddings/{{weddingSlug}}"
+          }
+        },
+        {
+          "name": "PATCH /api/v1/weddings/:slug",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"wedding\": {\n    \"couple_name\": \"Priya & Arjun Updated\",\n    \"allow_download\": \"all\",\n    \"metadata\": {\n      \"location\": \"Mumbai\"\n    }\n  }\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/weddings/{{weddingSlug}}"
+          }
+        },
+        {
+          "name": "DELETE /api/v1/weddings/:slug",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/weddings/{{weddingSlug}}"
+          }
+        },
+        {
+          "name": "POST /api/v1/weddings/:slug/hero",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "" }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/weddings/{{weddingSlug}}/hero"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ceremonies",
+      "item": [
+        {
+          "name": "GET /api/v1/weddings/:wedding_slug/ceremonies",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/weddings/{{weddingSlug}}/ceremonies"
+          }
+        },
+        {
+          "name": "POST /api/v1/weddings/:wedding_slug/ceremonies",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ceremony\": {\n    \"name\": \"Haldi\",\n    \"scheduled_at\": \"2026-12-30T19:00:00Z\",\n    \"description\": \"Yellow ceremony\"\n  }\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/weddings/{{weddingSlug}}/ceremonies"
+          }
+        },
+        {
+          "name": "GET /api/v1/weddings/:wedding_slug/ceremonies/:slug",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/weddings/{{weddingSlug}}/ceremonies/{{ceremonySlug}}"
+          }
+        },
+        {
+          "name": "PATCH /api/v1/weddings/:wedding_slug/ceremonies/:slug",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ceremony\": {\n    \"name\": \"Haldi Updated\",\n    \"description\": \"Updated ceremony\"\n  }\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/weddings/{{weddingSlug}}/ceremonies/{{ceremonySlug}}"
+          }
+        },
+        {
+          "name": "DELETE /api/v1/weddings/:wedding_slug/ceremonies/:slug",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/weddings/{{weddingSlug}}/ceremonies/{{ceremonySlug}}"
+          }
+        },
+        {
+          "name": "POST /api/v1/weddings/:wedding_slug/ceremonies/:slug/cover",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "" }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/weddings/{{weddingSlug}}/ceremonies/{{ceremonySlug}}/cover"
+          }
+        },
+        {
+          "name": "PATCH /api/v1/weddings/:wedding_slug/ceremonies/reorder",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order\": [\n    \"{{ceremonyId1}}\",\n    \"{{ceremonyId2}}\"\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/weddings/{{weddingSlug}}/ceremonies/reorder"
+          }
+        },
+        {
+          "name": "POST /api/v1/weddings/:wedding_slug/ceremonies/seed",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"template\": \"indian_wedding\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/weddings/{{weddingSlug}}/ceremonies/seed"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Storage",
+      "item": [
+        {
+          "name": "GET /api/v1/storage_connections",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/storage_connections"
+          }
+        },
+        {
+          "name": "POST /api/v1/storage_connections",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"storage_connection\": {\n    \"label\": \"Primary Import\",\n    \"provider\": \"cloudflare_r2\",\n    \"bucket\": \"photographer-archive\",\n    \"region\": \"auto\",\n    \"endpoint\": \"https://example.r2.cloudflarestorage.com\",\n    \"access_key\": \"your-access-key\",\n    \"secret_key\": \"your-secret-key\",\n    \"base_prefix\": \"weddings/\",\n    \"is_default\": true,\n    \"active\": true\n  }\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/storage_connections"
+          }
+        },
+        {
+          "name": "PATCH /api/v1/storage_connections/:id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"storage_connection\": {\n    \"label\": \"Updated Import\",\n    \"active\": false\n  }\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/storage_connections/{{connectionId}}"
+          }
+        },
+        {
+          "name": "DELETE /api/v1/storage_connections/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/storage_connections/{{connectionId}}"
+          }
+        },
+        {
+          "name": "GET /api/v1/upload_batches/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/upload_batches/{{uploadBatchId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Photos",
+      "item": [
+        {
+          "name": "GET /api/v1/weddings/:wedding_slug/ceremonies/:ceremony_slug/photos",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/weddings/{{weddingSlug}}/ceremonies/{{ceremonySlug}}/photos?processing_status=ready",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "v1", "weddings", "{{weddingSlug}}", "ceremonies", "{{ceremonySlug}}", "photos" ],
+              "query": [
+                { "key": "processing_status", "value": "ready" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/weddings/:wedding_slug/ceremonies/:ceremony_slug/photos/import/discover",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"connection_id\": \"{{connectionId}}\",\n  \"prefix\": \"haldi/\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/weddings/{{weddingSlug}}/ceremonies/{{ceremonySlug}}/photos/import/discover"
+          }
+        },
+        {
+          "name": "POST /api/v1/weddings/:wedding_slug/ceremonies/:ceremony_slug/photos/import",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"connection_id\": \"{{connectionId}}\",\n  \"files\": [\n    {\n      \"source_key\": \"weddings/haldi/DSC_0012.jpg\",\n      \"filename\": \"DSC_0012.jpg\",\n      \"content_type\": \"image/jpeg\",\n      \"byte_size\": 4500000,\n      \"etag\": \"etag-123\"\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/weddings/{{weddingSlug}}/ceremonies/{{ceremonySlug}}/photos/import"
+          }
+        },
+        {
+          "name": "POST /api/v1/weddings/:wedding_slug/ceremonies/:ceremony_slug/photos/presign",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"files\": [\n    {\n      \"filename\": \"DSC_0012.jpg\",\n      \"content_type\": \"image/jpeg\",\n      \"byte_size\": 4500000\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/weddings/{{weddingSlug}}/ceremonies/{{ceremonySlug}}/photos/presign"
+          }
+        },
+        {
+          "name": "PATCH /api/v1/weddings/:wedding_slug/ceremonies/:ceremony_slug/photos/reorder",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order\": [\n    \"{{photoId1}}\",\n    \"{{photoId2}}\"\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/weddings/{{weddingSlug}}/ceremonies/{{ceremonySlug}}/photos/reorder"
+          }
+        },
+        {
+          "name": "POST /api/v1/photos/:id/confirm",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/photos/{{photoId}}/confirm"
+          }
+        },
+        {
+          "name": "POST /api/v1/photos/:id/retry_import",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/photos/{{photoId}}/retry_import"
+          }
+        },
+        {
+          "name": "POST /api/v1/photos/:id/retry_processing",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/photos/{{photoId}}/retry_processing"
+          }
+        },
+        {
+          "name": "POST /api/v1/photos/:id/set_cover",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/photos/{{photoId}}/set_cover"
+          }
+        },
+        {
+          "name": "DELETE /api/v1/photos/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/photos/{{photoId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Gallery",
+      "item": [
+        {
+          "name": "POST /api/v1/g/:studio_slug/:wedding_slug/verify",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"gallery123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/g/{{studioSlug}}/{{weddingSlug}}/verify"
+          }
+        },
+        {
+          "name": "GET /api/v1/g/:studio_slug/:wedding_slug",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Gallery-Token", "value": "{{galleryToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/g/{{studioSlug}}/{{weddingSlug}}"
+          }
+        },
+        {
+          "name": "GET /api/v1/g/:studio_slug/:wedding_slug/ceremonies",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Gallery-Token", "value": "{{galleryToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/g/{{studioSlug}}/{{weddingSlug}}/ceremonies"
+          }
+        },
+        {
+          "name": "GET /api/v1/g/:studio_slug/:wedding_slug/ceremonies/:ceremony_slug/photos",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Gallery-Token", "value": "{{galleryToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/g/{{studioSlug}}/{{weddingSlug}}/ceremonies/{{ceremonySlug}}/photos?limit=20",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "v1", "g", "{{studioSlug}}", "{{weddingSlug}}", "ceremonies", "{{ceremonySlug}}", "photos" ],
+              "query": [
+                { "key": "limit", "value": "20" },
+                { "key": "cursor", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/g/:studio_slug/:wedding_slug/photos/:photo_id/like",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Gallery-Token", "value": "{{galleryToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/g/{{studioSlug}}/{{weddingSlug}}/photos/{{photoId}}/like"
+          }
+        },
+        {
+          "name": "DELETE /api/v1/g/:studio_slug/:wedding_slug/photos/:photo_id/like",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "X-Gallery-Token", "value": "{{galleryToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/g/{{studioSlug}}/{{weddingSlug}}/photos/{{photoId}}/like"
+          }
+        },
+        {
+          "name": "GET /api/v1/g/:studio_slug/:wedding_slug/likes",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Gallery-Token", "value": "{{galleryToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/g/{{studioSlug}}/{{weddingSlug}}/likes"
+          }
+        },
+        {
+          "name": "GET /api/v1/g/:studio_slug/:wedding_slug/shortlist",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Gallery-Token", "value": "{{galleryToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/g/{{studioSlug}}/{{weddingSlug}}/shortlist"
+          }
+        },
+        {
+          "name": "POST /api/v1/g/:studio_slug/:wedding_slug/shortlist/photos",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Gallery-Token", "value": "{{galleryToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"photo_ids\": [\n    \"{{photoId1}}\",\n    \"{{photoId2}}\"\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/g/{{studioSlug}}/{{weddingSlug}}/shortlist/photos"
+          }
+        },
+        {
+          "name": "DELETE /api/v1/g/:studio_slug/:wedding_slug/shortlist/photos/:photo_id",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "X-Gallery-Token", "value": "{{galleryToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/g/{{studioSlug}}/{{weddingSlug}}/shortlist/photos/{{photoId}}"
+          }
+        },
+        {
+          "name": "PATCH /api/v1/g/:studio_slug/:wedding_slug/shortlist/reorder",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "X-Gallery-Token", "value": "{{galleryToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order\": [\n    \"{{photoId2}}\",\n    \"{{photoId1}}\"\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/g/{{studioSlug}}/{{weddingSlug}}/shortlist/reorder"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Shortlists",
+      "item": [
+        {
+          "name": "GET /api/v1/weddings/:wedding_slug/shortlists",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/weddings/{{weddingSlug}}/shortlists"
+          }
+        },
+        {
+          "name": "GET /api/v1/weddings/:wedding_slug/shortlists/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/weddings/{{weddingSlug}}/shortlists/{{shortlistId}}"
+          }
+        }
+      ]
+    }
+  ]
+}

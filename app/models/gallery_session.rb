@@ -5,6 +5,7 @@ class GallerySession < ApplicationRecord
   belongs_to :wedding
   has_many :likes, dependent: :destroy
   has_many :shortlists, dependent: :destroy
+  has_many :download_requests, dependent: :destroy
 
   validates :session_token_digest, presence: true, uniqueness: true
   validates :role, inclusion: { in: ROLES }

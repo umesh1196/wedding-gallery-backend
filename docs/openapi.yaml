@@ -1644,6 +1644,174 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /api/v1/g/{studio_slug}/{wedding_slug}/photos/{photo_id}/download:
+    get:
+      tags:
+        - Gallery
+      summary: Generate a signed single-photo download URL
+      operationId: galleryDownloadPhoto
+      parameters:
+        - name: studio_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: wedding_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: photo_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/XGalleryToken"
+      responses:
+        "200":
+          description: Signed photo download URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GalleryPhotoDownloadResponse"
+        "401":
+          description: Invalid session token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Download not permitted for this session or wedding settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Photo not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: Gallery expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/g/{studio_slug}/{wedding_slug}/downloads:
+    post:
+      tags:
+        - Gallery
+      summary: Queue a bulk gallery download request
+      operationId: galleryCreateDownloadRequest
+      parameters:
+        - name: studio_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: wedding_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/XGalleryToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GalleryBulkDownloadRequest"
+      responses:
+        "200":
+          description: Bulk download request already existed or no-op
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GalleryDownloadRequestResponse"
+        "202":
+          description: Bulk download request accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GalleryDownloadRequestResponse"
+        "401":
+          description: Invalid session token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Download not permitted for this session or wedding settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Ceremony not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: Gallery expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/g/{studio_slug}/{wedding_slug}/downloads/{id}:
+    get:
+      tags:
+        - Gallery
+      summary: Fetch bulk download request status
+      operationId: galleryDownloadRequestStatus
+      parameters:
+        - name: studio_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: wedding_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/XGalleryToken"
+      responses:
+        "200":
+          description: Download request status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GalleryDownloadRequestResponse"
+        "401":
+          description: Invalid session token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Download request not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: Gallery expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /api/v1/g/{studio_slug}/{wedding_slug}/photos/{photo_id}/like:
     post:
       tags:
@@ -3496,6 +3664,106 @@ components:
               nullable: true
             has_more:
               type: boolean
+
+    GalleryPhotoDownloadData:
+      type: object
+      required:
+        - download_url
+        - filename
+        - expires_at
+      properties:
+        download_url:
+          type: string
+          format: uri
+        filename:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+
+    GalleryPhotoDownloadResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          $ref: "#/components/schemas/GalleryPhotoDownloadData"
+
+    GalleryBulkDownloadRequest:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum:
+            - ceremony
+            - shortlist
+            - full_gallery
+        ceremony_slug:
+          type: string
+          nullable: true
+
+    GalleryDownloadRequest:
+      type: object
+      required:
+        - id
+        - filename
+        - scope_type
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        filename:
+          type: string
+        scope_type:
+          type: string
+          enum:
+            - ceremony
+            - shortlist
+            - full_gallery
+        status:
+          type: string
+          enum:
+            - queued
+            - processing
+            - ready
+            - failed
+            - expired
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        download_url:
+          type: string
+          format: uri
+          nullable: true
+        error_message:
+          type: string
+          nullable: true
+
+    GalleryDownloadRequestResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          $ref: "#/components/schemas/GalleryDownloadRequest"
 
     ErrorDetail:
       type: object

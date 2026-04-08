@@ -27,5 +27,9 @@ module Storage
     def self.wedding_prefix(studio_id:, wedding_id:)
       "studios/#{studio_id}/weddings/#{wedding_id}/"
     end
+
+    def self.download_archive(studio_id:, wedding_id:, download_request_id:)
+      "studios/#{studio_id}/weddings/#{wedding_id}/downloads/#{download_request_id}.zip"
+    end
   end
 end

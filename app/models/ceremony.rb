@@ -1,6 +1,7 @@
 class Ceremony < ApplicationRecord
   belongs_to :wedding
   has_many :photos, dependent: :destroy
+  has_many :download_requests, dependent: :nullify
   has_many :upload_batches, dependent: :destroy
 
   before_validation :normalize_slug

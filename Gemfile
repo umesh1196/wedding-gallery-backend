@@ -26,6 +26,7 @@ gem "marcel"
 # Image processing & thumbnails
 gem "image_processing", "~> 1.2"
 gem "ruby-vips"
+gem "rubyzip", "~> 2.3"
 
 # Background jobs (Rails 8 built-in)
 gem "solid_queue"

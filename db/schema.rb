@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_08_223000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_08_233000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -30,6 +30,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_08_223000) do
     t.index ["wedding_id", "slug"], name: "index_ceremonies_on_wedding_id_and_slug", unique: true
     t.index ["wedding_id", "sort_order"], name: "index_ceremonies_on_wedding_id_and_sort_order"
     t.index ["wedding_id"], name: "index_ceremonies_on_wedding_id"
+  end
+
+  create_table "download_requests", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "archive_key"
+    t.uuid "ceremony_id"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.string "error_message"
+    t.datetime "expires_at"
+    t.string "filename", null: false
+    t.uuid "gallery_session_id", null: false
+    t.string "scope_type", null: false
+    t.uuid "shortlist_id"
+    t.string "status", default: "queued", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "wedding_id", null: false
+    t.index ["ceremony_id"], name: "index_download_requests_on_ceremony_id"
+    t.index ["gallery_session_id", "created_at"], name: "index_download_requests_on_gallery_session_id_and_created_at"
+    t.index ["gallery_session_id"], name: "index_download_requests_on_gallery_session_id"
+    t.index ["shortlist_id"], name: "index_download_requests_on_shortlist_id"
+    t.index ["wedding_id", "status"], name: "index_download_requests_on_wedding_id_and_status"
+    t.index ["wedding_id"], name: "index_download_requests_on_wedding_id"
   end
 
   create_table "gallery_sessions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -203,6 +225,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_08_223000) do
   end
 
   add_foreign_key "ceremonies", "weddings"
+  add_foreign_key "download_requests", "ceremonies"
+  add_foreign_key "download_requests", "gallery_sessions"
+  add_foreign_key "download_requests", "shortlists"
+  add_foreign_key "download_requests", "weddings"
   add_foreign_key "gallery_sessions", "weddings"
   add_foreign_key "likes", "gallery_sessions"
   add_foreign_key "likes", "photos"
