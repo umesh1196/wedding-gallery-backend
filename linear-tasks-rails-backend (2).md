@@ -1383,9 +1383,12 @@ add_index :shortlist_photos, [:shortlist_id, :photo_id], unique: true
 create_table :comments, id: :uuid do |t|
   t.references :photo, type: :uuid, foreign_key: true, null: false
   t.references :gallery_session, type: :uuid, foreign_key: true, null: false
+  t.string :visitor_name_snapshot
   t.text :body, null: false
   t.timestamps
 end
+
+add_column :photos, :comments_count, :integer, default: 0, null: false
 ```
 
 **`POST /api/v1/g/.../photos/:photo_id/comments`**
@@ -1394,10 +1397,28 @@ end
 
 - [ ] Check `allow_comments` on wedding
 - [ ] Limit comment length (500 chars)
-- [ ] Include visitor name in response
-- [ ] Photographer view: `GET /api/v1/weddings/:slug/comments` (all comments across wedding)
+- [ ] Strip blank/whitespace-only comments
+- [ ] Snapshot visitor name into the comment record for stable display/reporting
+- [ ] Add basic per-session or per-IP comment rate limiting to reduce spam
+- [ ] Return newest-first ordering for photo comments
+- [ ] Add pagination for photo comments and photographer review
+- [ ] Extend gallery photo responses with `comment_count`
+- [ ] Photographer view: `GET /api/v1/weddings/:slug/comments` (all comments across wedding, paginated)
+- [ ] Include enough studio-side context in photographer view:
+  - comment id
+  - visitor name
+  - body
+  - photo id
+  - ceremony slug/name
+  - created_at
+- [ ] Keep public gallery comment CRUD separate from studio-side review controller/actions
 
-**Acceptance:** Comments create/list/delete. Respect permission. Photographer sees all.
+**Acceptance:** Comments create/list/delete. Respect permission and anti-spam rules. Public responses expose stable visitor name and photo-level comment counts. Photographer can review wedding comments with pagination and ceremony/photo context.
+
+**Scope Notes**
+- First pass supports only top-level comments on photos; threaded replies are out of scope.
+- First pass can hard-delete user-owned comments rather than soft-delete/moderate.
+- Comment permissions must still respect gallery session scope and wedding `allow_comments`.
 
 ---
 

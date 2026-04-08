@@ -3,6 +3,7 @@ class GallerySession < ApplicationRecord
   ROLES = %w[guest family couple].freeze
 
   belongs_to :wedding
+  has_many :comments, dependent: :destroy
   has_many :likes, dependent: :destroy
   has_many :shortlists, dependent: :destroy
   has_many :download_requests, dependent: :destroy

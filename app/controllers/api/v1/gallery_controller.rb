@@ -13,6 +13,7 @@ module Api
         verify_rate_limiter.reset!
         _session, token = GallerySession.issue_for!(
           wedding: wedding,
+          visitor_name: params[:visitor_name].presence,
           ip: request.remote_ip,
           user_agent: request.user_agent
         )

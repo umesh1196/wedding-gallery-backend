@@ -9,6 +9,9 @@ Rails.application.routes.draw do
         get ":studio_slug/:wedding_slug", to: "bootstraps#show"
         get ":studio_slug/:wedding_slug/ceremonies", to: "ceremonies#index"
         get ":studio_slug/:wedding_slug/ceremonies/:ceremony_slug/photos", to: "photos#index"
+        get ":studio_slug/:wedding_slug/photos/:photo_id/comments", to: "comments#index"
+        post ":studio_slug/:wedding_slug/photos/:photo_id/comments", to: "comments#create"
+        delete ":studio_slug/:wedding_slug/comments/:id", to: "comments#destroy"
         get ":studio_slug/:wedding_slug/photos/:photo_id/download", to: "downloads#download_photo"
         post ":studio_slug/:wedding_slug/downloads", to: "downloads#create"
         get ":studio_slug/:wedding_slug/downloads/:id", to: "downloads#show"
@@ -29,6 +32,7 @@ Rails.application.routes.draw do
       resources :storage_connections, only: [ :index, :create, :update, :destroy ], controller: "storage_connections"
       resources :upload_batches, only: [ :show ], controller: "upload_batches"
       resources :weddings, param: :slug, except: [ :new, :edit ] do
+        get :comments, on: :member, controller: "comments", action: :index
         post :hero, on: :member, action: :upload_hero
         resources :shortlists, only: [ :index, :show ], controller: "shortlists"
         resources :ceremonies, except: [ :new, :edit ], controller: "ceremonies", param: :slug do

@@ -26,7 +26,7 @@ RSpec.describe "Api::V1::Gallery", type: :request do
   describe "POST /api/v1/g/:studio_slug/:wedding_slug/verify" do
     it "creates a gallery session and returns the gallery shell for a valid password" do
       post "/api/v1/g/#{studio.slug}/#{wedding.slug}/verify",
-           params: { password: "gallerypass123" },
+           params: { password: "gallerypass123", visitor_name: "Asha" },
            as: :json
 
       expect(response).to have_http_status(:ok)
@@ -34,6 +34,7 @@ RSpec.describe "Api::V1::Gallery", type: :request do
       expect(response.parsed_body.dig("data", "gallery", "couple_name")).to eq("Priya & Arjun")
       expect(response.parsed_body.dig("data", "gallery", "branding", "slug")).to eq("priya-studio")
       expect(GallerySession.count).to eq(1)
+      expect(GallerySession.last.visitor_name).to eq("Asha")
     end
 
     it "returns 401 for an invalid password" do
@@ -141,6 +142,7 @@ RSpec.describe "Api::V1::Gallery", type: :request do
     let!(:first_photo) { create(:photo, ceremony: haldi, wedding: wedding, sort_order: 1, width: 4000, height: 2667) }
     let!(:second_photo) { create(:photo, ceremony: haldi, wedding: wedding, sort_order: 2, width: 3200, height: 2133) }
     let!(:processing_photo) { create(:photo, ceremony: haldi, wedding: wedding, sort_order: 3, processing_status: "processing", processed_at: nil) }
+    let!(:comment) { create(:comment, photo: first_photo, gallery_session: create(:gallery_session, wedding: wedding)) }
 
     before do
       allow_any_instance_of(PhotoUrlBuilder).to receive(:urls).and_return(
@@ -163,6 +165,7 @@ RSpec.describe "Api::V1::Gallery", type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.parsed_body.dig("data").size).to eq(1)
       expect(response.parsed_body.dig("data", 0, "id")).to eq(first_photo.id)
+      expect(response.parsed_body.dig("data", 0, "comment_count")).to eq(1)
       expect(response.parsed_body.dig("meta", "has_more")).to eq(true)
       expect(response.parsed_body.dig("meta", "next_cursor")).to be_present
     end

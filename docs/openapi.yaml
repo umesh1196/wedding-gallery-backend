@@ -699,6 +699,47 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /api/v1/weddings/{slug}/comments:
+    get:
+      tags:
+        - Comments
+      summary: List all wedding comments for the studio
+      operationId: weddingComments
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+      responses:
+        "200":
+          description: Wedding comments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudioCommentListResponse"
+        "401":
+          description: Missing, invalid, or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Wedding not found for current studio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /api/v1/weddings/{wedding_slug}/ceremonies:
     get:
       tags:
@@ -1689,6 +1730,197 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Photo not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: Gallery expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/g/{studio_slug}/{wedding_slug}/photos/{photo_id}/comments:
+    get:
+      tags:
+        - Comments
+      summary: List comments for a gallery photo
+      operationId: galleryPhotoComments
+      parameters:
+        - name: studio_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: wedding_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: photo_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/XGalleryToken"
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          description: Photo comments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommentListResponse"
+        "401":
+          description: Invalid session token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Comments disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Photo not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: Gallery expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      tags:
+        - Comments
+      summary: Create a comment on a gallery photo
+      operationId: galleryCreateComment
+      parameters:
+        - name: studio_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: wedding_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: photo_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/XGalleryToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommentCreateRequest"
+      responses:
+        "201":
+          description: Comment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommentResponse"
+        "401":
+          description: Invalid session token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Comments disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Photo not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: Gallery expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many comment attempts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/g/{studio_slug}/{wedding_slug}/comments/{id}:
+    delete:
+      tags:
+        - Comments
+      summary: Delete your own gallery comment
+      operationId: galleryDeleteComment
+      parameters:
+        - name: studio_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: wedding_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/XGalleryToken"
+      responses:
+        "200":
+          description: Comment deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+        "401":
+          description: Invalid session token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Comments disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Comment not found
           content:
             application/json:
               schema:
@@ -3421,6 +3653,7 @@ components:
         - id
         - width
         - height
+        - comment_count
         - is_liked
         - is_shortlisted
       properties:
@@ -3441,6 +3674,8 @@ components:
         width:
           type: integer
         height:
+          type: integer
+        comment_count:
           type: integer
         is_liked:
           type: boolean
@@ -3764,6 +3999,99 @@ components:
             - true
         data:
           $ref: "#/components/schemas/GalleryDownloadRequest"
+
+    Comment:
+      type: object
+      required:
+        - id
+        - body
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        body:
+          type: string
+        visitor_name:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    CommentCreateRequest:
+      type: object
+      required:
+        - comment
+      properties:
+        comment:
+          type: object
+          required:
+            - body
+          properties:
+            body:
+              type: string
+              maxLength: 500
+
+    CommentResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          $ref: "#/components/schemas/Comment"
+
+    CommentListResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Comment"
+
+    StudioComment:
+      allOf:
+        - $ref: "#/components/schemas/Comment"
+        - type: object
+          required:
+            - photo_id
+            - ceremony_slug
+            - ceremony_name
+          properties:
+            photo_id:
+              type: string
+              format: uuid
+            ceremony_slug:
+              type: string
+            ceremony_name:
+              type: string
+
+    StudioCommentListResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudioComment"
 
     ErrorDetail:
       type: object

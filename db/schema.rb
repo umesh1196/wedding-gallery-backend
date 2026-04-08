@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_08_233000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_08_235500) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -30,6 +30,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_08_233000) do
     t.index ["wedding_id", "slug"], name: "index_ceremonies_on_wedding_id_and_slug", unique: true
     t.index ["wedding_id", "sort_order"], name: "index_ceremonies_on_wedding_id_and_sort_order"
     t.index ["wedding_id"], name: "index_ceremonies_on_wedding_id"
+  end
+
+  create_table "comments", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.text "body", null: false
+    t.datetime "created_at", null: false
+    t.uuid "gallery_session_id", null: false
+    t.uuid "photo_id", null: false
+    t.datetime "updated_at", null: false
+    t.string "visitor_name_snapshot"
+    t.index ["gallery_session_id"], name: "index_comments_on_gallery_session_id"
+    t.index ["photo_id"], name: "index_comments_on_photo_id"
   end
 
   create_table "download_requests", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -84,6 +95,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_08_233000) do
     t.virtual "aspect_ratio", type: :decimal, precision: 5, scale: 3, as: "\nCASE\n    WHEN (height > 0) THEN round(((width)::numeric / (height)::numeric), 3)\n    ELSE (0)::numeric\nEND", stored: true
     t.text "blur_data_uri"
     t.uuid "ceremony_id", null: false
+    t.integer "comments_count", default: 0, null: false
     t.datetime "created_at", null: false
     t.jsonb "exif_data", default: {}
     t.string "file_extension", default: "jpg", null: false
@@ -225,6 +237,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_08_233000) do
   end
 
   add_foreign_key "ceremonies", "weddings"
+  add_foreign_key "comments", "gallery_sessions"
+  add_foreign_key "comments", "photos"
   add_foreign_key "download_requests", "ceremonies"
   add_foreign_key "download_requests", "gallery_sessions"
   add_foreign_key "download_requests", "shortlists"

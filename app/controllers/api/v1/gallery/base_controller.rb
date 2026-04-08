@@ -56,6 +56,7 @@ module Api
             blur_hash: urls[:blur],
             width: photo.width,
             height: photo.height,
+            comment_count: photo.comments_count,
             is_liked: liked_photo_ids.include?(photo.id),
             is_shortlisted: shortlisted_photo_ids.include?(photo.id)
           }

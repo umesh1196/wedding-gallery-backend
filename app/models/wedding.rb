@@ -6,6 +6,7 @@ class Wedding < ApplicationRecord
   belongs_to :studio
   has_many :ceremonies, dependent: :destroy
   has_many :photos, dependent: :destroy
+  has_many :comments, through: :photos
   has_many :gallery_sessions, dependent: :destroy
   has_many :shortlists, dependent: :destroy
   has_many :download_requests, dependent: :destroy
