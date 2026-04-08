@@ -10,10 +10,61 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_09_004100) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_09_012200) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
+
+  create_table "album_photos", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "album_id", null: false
+    t.datetime "created_at", null: false
+    t.uuid "photo_id", null: false
+    t.integer "sort_order", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["album_id", "photo_id"], name: "index_album_photos_on_album_id_and_photo_id", unique: true
+    t.index ["album_id", "sort_order"], name: "index_album_photos_on_album_id_and_sort_order"
+    t.index ["album_id"], name: "index_album_photos_on_album_id"
+    t.index ["photo_id"], name: "index_album_photos_on_photo_id"
+  end
+
+  create_table "album_share_links", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "album_id", null: false
+    t.datetime "created_at", null: false
+    t.uuid "created_by_gallery_session_id"
+    t.uuid "created_by_studio_id"
+    t.datetime "expires_at"
+    t.string "label"
+    t.string "permissions", default: "view", null: false
+    t.datetime "revoked_at"
+    t.string "token_digest", null: false
+    t.datetime "updated_at", null: false
+    t.index ["album_id", "created_at"], name: "index_album_share_links_on_album_id_and_created_at"
+    t.index ["album_id"], name: "index_album_share_links_on_album_id"
+    t.index ["created_by_gallery_session_id"], name: "index_album_share_links_on_created_by_gallery_session_id"
+    t.index ["created_by_studio_id"], name: "index_album_share_links_on_created_by_studio_id"
+    t.index ["token_digest"], name: "index_album_share_links_on_token_digest", unique: true
+  end
+
+  create_table "albums", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "album_type", null: false
+    t.uuid "ceremony_id", null: false
+    t.uuid "cover_photo_id"
+    t.datetime "created_at", null: false
+    t.uuid "created_by_gallery_session_id"
+    t.uuid "created_by_studio_id"
+    t.text "description"
+    t.string "name", null: false
+    t.integer "photos_count", default: 0, null: false
+    t.string "slug", null: false
+    t.datetime "updated_at", null: false
+    t.string "visibility", default: "private", null: false
+    t.index ["ceremony_id", "album_type", "created_at"], name: "index_albums_on_ceremony_id_and_album_type_and_created_at"
+    t.index ["ceremony_id", "slug"], name: "index_albums_on_ceremony_id_and_slug", unique: true
+    t.index ["ceremony_id"], name: "index_albums_on_ceremony_id"
+    t.index ["cover_photo_id"], name: "index_albums_on_cover_photo_id"
+    t.index ["created_by_gallery_session_id"], name: "index_albums_on_created_by_gallery_session_id"
+    t.index ["created_by_studio_id"], name: "index_albums_on_created_by_studio_id"
+  end
 
   create_table "ceremonies", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "cover_image_key"
@@ -258,6 +309,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_09_004100) do
     t.index ["studio_id"], name: "index_weddings_on_studio_id"
   end
 
+  add_foreign_key "album_photos", "albums"
+  add_foreign_key "album_photos", "photos"
+  add_foreign_key "album_share_links", "albums"
+  add_foreign_key "album_share_links", "gallery_sessions", column: "created_by_gallery_session_id"
+  add_foreign_key "album_share_links", "studios", column: "created_by_studio_id"
+  add_foreign_key "albums", "ceremonies"
+  add_foreign_key "albums", "gallery_sessions", column: "created_by_gallery_session_id"
+  add_foreign_key "albums", "photos", column: "cover_photo_id"
+  add_foreign_key "albums", "studios", column: "created_by_studio_id"
   add_foreign_key "ceremonies", "weddings"
   add_foreign_key "comments", "gallery_sessions"
   add_foreign_key "comments", "photos"

@@ -1537,6 +1537,7 @@ create_table :albums, id: :uuid do |t|
   t.text :description
   t.references :cover_photo, type: :uuid, foreign_key: { to_table: :photos }
   t.string :visibility, default: "private", null: false  # private | shared
+  t.integer :photos_count, default: 0, null: false
   t.timestamps
 end
 
@@ -1550,6 +1551,8 @@ add_index :albums, [:ceremony_id, :slug], unique: true
 - [ ] Keep albums independent from visitor shortlists
 - [ ] Validate cover photo belongs to the same ceremony
 - [ ] Validate `album_type` matches the creator type
+- [ ] Add ownership helpers (`studio_curated?`, `user_created?`, `owned_by_studio?`, `owned_by_gallery_session?`)
+- [ ] Expose `photos_count` on list/detail payloads instead of calculating counts repeatedly
 
 **Acceptance:** Both studio-curated albums and user-created albums can exist under a ceremony with clear ownership rules.
 
@@ -1574,6 +1577,7 @@ add_index :album_photos, [:album_id, :sort_order]
 - [ ] Validate photo belongs to album ceremony
 - [ ] Support stable manual ordering
 - [ ] Prevent duplicate photo membership per album
+- [ ] Counter-cache album membership into `albums.photos_count`
 
 **Acceptance:** Both studio-curated and user-created albums can contain ordered photos from exactly one ceremony.
 
@@ -1699,7 +1703,7 @@ add_index :album_share_links, :token_digest, unique: true
 **`GET /api/v1/g/albums/shared/:token`**
 
 - [ ] Store token digests, not raw tokens
-- [ ] Create album-scoped viewer session on access
+- [ ] First pass keeps public album viewing token-scoped and read-only; do not add a second viewer-session model yet
 - [ ] Enforce permissions independently from whole-gallery links
 - [ ] Default expiry to wedding expiry unless overridden
 - [ ] Ensure share-link creator matches album owner type
@@ -1718,7 +1722,7 @@ add_index :album_share_links, :token_digest, unique: true
 - [ ] Return album shell and paginated album photos
 - [ ] Scope all access to the album only
 - [ ] Reuse gallery photo presenters where possible
-- [ ] Ensure likes/downloads respect both wedding settings and album-link permissions
+- [ ] Return album-share permissions in the payload so later interaction/download flows can honor them cleanly
 
 **Acceptance:** Recipient opens an album link and can browse only the curated album photos with the granted permissions.
 
@@ -1732,6 +1736,7 @@ add_index :album_share_links, :token_digest, unique: true
 - There are two supported album types: `studio_curated` and `user_created`.
 - `studio_curated` albums are official and managed by studio auth.
 - `user_created` albums are private by default and managed only by the creating gallery session.
+- First pass of public album access is read-only and token-scoped. Add album viewer sessions only when album-specific likes/comments/downloads become necessary.
 - First pass should use private link-based access, not recipient email/phone invite workflows.
 - Recipient-specific invite lists or OTP verification can be a later enhancement if needed.
 

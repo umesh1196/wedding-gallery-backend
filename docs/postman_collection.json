@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "9b7ed61f-c4b4-4c50-90f3-36cab9f324bd",
     "name": "Wedding Gallery Backend",
-    "description": "Postman collection for the Wedding Gallery Rails backend through Epic 12.",
+    "description": "Postman collection for the Wedding Gallery Rails backend through Epic 13.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -10,9 +10,11 @@
     { "key": "jwtToken", "value": "" },
     { "key": "galleryToken", "value": "" },
     { "key": "shareToken", "value": "" },
+    { "key": "albumShareToken", "value": "" },
     { "key": "studioSlug", "value": "my-studio" },
     { "key": "weddingSlug", "value": "priya-arjun" },
     { "key": "ceremonySlug", "value": "haldi" },
+    { "key": "albumSlug", "value": "family-favorites" },
     { "key": "photoId", "value": "" },
     { "key": "connectionId", "value": "" },
     { "key": "uploadBatchId", "value": "" },
@@ -756,6 +758,170 @@
               "raw": "{\n  \"order\": [\n    \"{{photoId2}}\",\n    \"{{photoId1}}\"\n  ]\n}"
             },
             "url": "{{baseUrl}}/api/v1/g/{{studioSlug}}/{{weddingSlug}}/shortlist/reorder"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Albums",
+      "item": [
+        {
+          "name": "GET /api/v1/weddings/:wedding_slug/ceremonies/:ceremony_slug/albums",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/weddings/{{weddingSlug}}/ceremonies/{{ceremonySlug}}/albums"
+          }
+        },
+        {
+          "name": "POST /api/v1/weddings/:wedding_slug/ceremonies/:ceremony_slug/albums",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"album\": {\n    \"name\": \"Family Favorites\",\n    \"description\": \"Curated picks\",\n    \"album_type\": \"studio_curated\"\n  }\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/weddings/{{weddingSlug}}/ceremonies/{{ceremonySlug}}/albums"
+          }
+        },
+        {
+          "name": "PATCH /api/v1/weddings/:wedding_slug/ceremonies/:ceremony_slug/albums/:slug",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"album\": {\n    \"name\": \"Updated Family Favorites\"\n  }\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/weddings/{{weddingSlug}}/ceremonies/{{ceremonySlug}}/albums/{{albumSlug}}"
+          }
+        },
+        {
+          "name": "POST /api/v1/weddings/:wedding_slug/ceremonies/:ceremony_slug/albums/:album_slug/photos",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"photo_ids\": [\n    \"{{photoId}}\"\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/weddings/{{weddingSlug}}/ceremonies/{{ceremonySlug}}/albums/{{albumSlug}}/photos"
+          }
+        },
+        {
+          "name": "PATCH /api/v1/weddings/:wedding_slug/ceremonies/:ceremony_slug/albums/:album_slug/reorder",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order\": [\n    \"{{photoId}}\"\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/weddings/{{weddingSlug}}/ceremonies/{{ceremonySlug}}/albums/{{albumSlug}}/reorder"
+          }
+        },
+        {
+          "name": "POST /api/v1/weddings/:wedding_slug/ceremonies/:ceremony_slug/albums/:album_slug/cover",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"photo_id\": \"{{photoId}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/weddings/{{weddingSlug}}/ceremonies/{{ceremonySlug}}/albums/{{albumSlug}}/cover"
+          }
+        },
+        {
+          "name": "POST /api/v1/weddings/:wedding_slug/ceremonies/:ceremony_slug/albums/:album_slug/share_links",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"For Parents\",\n  \"permissions\": \"view_download\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/weddings/{{weddingSlug}}/ceremonies/{{ceremonySlug}}/albums/{{albumSlug}}/share_links"
+          }
+        },
+        {
+          "name": "POST /api/v1/g/:studio_slug/:wedding_slug/ceremonies/:ceremony_slug/albums",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Gallery-Token", "value": "{{galleryToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"album\": {\n    \"name\": \"Our Picks\",\n    \"description\": \"Private album\",\n    \"album_type\": \"user_created\"\n  }\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/g/{{studioSlug}}/{{weddingSlug}}/ceremonies/{{ceremonySlug}}/albums"
+          }
+        },
+        {
+          "name": "POST /api/v1/g/:studio_slug/:wedding_slug/ceremonies/:ceremony_slug/albums/:album_slug/photos",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Gallery-Token", "value": "{{galleryToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"photo_ids\": [\n    \"{{photoId}}\"\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/g/{{studioSlug}}/{{weddingSlug}}/ceremonies/{{ceremonySlug}}/albums/{{albumSlug}}/photos"
+          }
+        },
+        {
+          "name": "POST /api/v1/g/:studio_slug/:wedding_slug/ceremonies/:ceremony_slug/albums/:album_slug/share_links",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Gallery-Token", "value": "{{galleryToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"For Family\",\n  \"permissions\": \"view_download\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/g/{{studioSlug}}/{{weddingSlug}}/ceremonies/{{ceremonySlug}}/albums/{{albumSlug}}/share_links"
+          }
+        },
+        {
+          "name": "GET /api/v1/g/albums/shared/:token",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/g/albums/shared/{{albumShareToken}}"
+          }
+        },
+        {
+          "name": "GET /api/v1/g/albums/shared/:token/photos",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/g/albums/shared/{{albumShareToken}}/photos?limit=20"
           }
         }
       ]

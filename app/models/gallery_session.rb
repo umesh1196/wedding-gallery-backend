@@ -5,6 +5,8 @@ class GallerySession < ApplicationRecord
 
   belongs_to :wedding
   belongs_to :share_link, optional: true
+  has_many :album_share_links, foreign_key: :created_by_gallery_session_id, dependent: :nullify
+  has_many :created_albums, class_name: "Album", foreign_key: :created_by_gallery_session_id, dependent: :nullify
   has_many :comments, dependent: :destroy
   has_many :likes, dependent: :destroy
   has_many :shortlists, dependent: :destroy

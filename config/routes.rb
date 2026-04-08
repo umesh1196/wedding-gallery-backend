@@ -7,9 +7,21 @@ Rails.application.routes.draw do
       post "g/:studio_slug/:wedding_slug/verify", to: "gallery#verify"
       namespace :g, module: "gallery", path: "g" do
         get "shared/:token", to: "shared_links#show"
+        get "albums/shared/:token", to: "shared_albums#show"
+        get "albums/shared/:token/photos", to: "shared_albums#photos"
         get ":studio_slug/:wedding_slug", to: "bootstraps#show"
         post ":studio_slug/:wedding_slug/share", to: "share_links#create"
         get ":studio_slug/:wedding_slug/ceremonies", to: "ceremonies#index"
+        get ":studio_slug/:wedding_slug/ceremonies/:ceremony_slug/albums", to: "albums#index"
+        post ":studio_slug/:wedding_slug/ceremonies/:ceremony_slug/albums", to: "albums#create"
+        get ":studio_slug/:wedding_slug/ceremonies/:ceremony_slug/albums/:slug", to: "albums#show"
+        patch ":studio_slug/:wedding_slug/ceremonies/:ceremony_slug/albums/:slug", to: "albums#update"
+        delete ":studio_slug/:wedding_slug/ceremonies/:ceremony_slug/albums/:slug", to: "albums#destroy"
+        post ":studio_slug/:wedding_slug/ceremonies/:ceremony_slug/albums/:album_slug/photos", to: "album_photos#create"
+        delete ":studio_slug/:wedding_slug/ceremonies/:ceremony_slug/albums/:album_slug/photos/:photo_id", to: "album_photos#destroy"
+        patch ":studio_slug/:wedding_slug/ceremonies/:ceremony_slug/albums/:album_slug/reorder", to: "album_photos#reorder"
+        post ":studio_slug/:wedding_slug/ceremonies/:ceremony_slug/albums/:album_slug/cover", to: "album_photos#cover"
+        post ":studio_slug/:wedding_slug/ceremonies/:ceremony_slug/albums/:album_slug/share_links", to: "album_share_links#create"
         get ":studio_slug/:wedding_slug/ceremonies/:ceremony_slug/photos", to: "photos#index"
         get ":studio_slug/:wedding_slug/photos/:photo_id/comments", to: "comments#index"
         post ":studio_slug/:wedding_slug/photos/:photo_id/comments", to: "comments#create"
@@ -38,6 +50,12 @@ Rails.application.routes.draw do
         post :hero, on: :member, action: :upload_hero
         resources :shortlists, only: [ :index, :show ], controller: "shortlists"
         resources :ceremonies, except: [ :new, :edit ], controller: "ceremonies", param: :slug do
+          resources :albums, except: [ :new, :edit ], controller: "albums", param: :slug
+          post "albums/:album_slug/photos", to: "album_photos#create"
+          delete "albums/:album_slug/photos/:photo_id", to: "album_photos#destroy"
+          patch "albums/:album_slug/reorder", to: "album_photos#reorder"
+          post "albums/:album_slug/cover", to: "album_photos#cover"
+          post "albums/:album_slug/share_links", to: "album_share_links#create"
           post :cover, on: :member, action: :upload_cover
           patch :reorder, on: :collection
           post :seed, on: :collection

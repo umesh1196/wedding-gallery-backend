@@ -7,6 +7,8 @@ class Photo < ApplicationRecord
   belongs_to :wedding
   belongs_to :studio_storage_connection, optional: true
   belongs_to :upload_batch, optional: true
+  has_many :album_photos, dependent: :destroy
+  has_many :albums, through: :album_photos
   has_many :comments, dependent: :destroy
   has_many :likes, dependent: :destroy
   has_many :shortlist_photos, dependent: :destroy
@@ -23,6 +25,10 @@ class Photo < ApplicationRecord
 
   def urls
     PhotoUrlBuilder.new(self).urls
+  end
+
+  def ready?
+    processing_status == "ready"
   end
 
   private

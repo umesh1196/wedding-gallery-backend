@@ -14,6 +14,7 @@ tags:
   - name: Studio
   - name: Weddings
   - name: Ceremonies
+  - name: Albums
   - name: Photos
   - name: Storage Connections
   - name: Upload Batches
@@ -1126,6 +1127,247 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /api/v1/weddings/{wedding_slug}/ceremonies/{ceremony_slug}/albums:
+    get:
+      tags:
+        - Albums
+      summary: List studio curated albums for a ceremony
+      operationId: listStudioAlbums
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/WeddingSlugNested"
+        - $ref: "#/components/parameters/CeremonySlugNested"
+      responses:
+        "200":
+          description: Ceremony albums
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlbumListResponse"
+    post:
+      tags:
+        - Albums
+      summary: Create a studio curated album
+      operationId: createStudioAlbum
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/WeddingSlugNested"
+        - $ref: "#/components/parameters/CeremonySlugNested"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [album]
+              properties:
+                album:
+                  $ref: "#/components/schemas/AlbumCreateRequest"
+      responses:
+        "201":
+          description: Album created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlbumResponse"
+
+  /api/v1/weddings/{wedding_slug}/ceremonies/{ceremony_slug}/albums/{slug}:
+    get:
+      tags: [Albums]
+      summary: Fetch a studio curated album
+      operationId: getStudioAlbum
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/WeddingSlugNested"
+        - $ref: "#/components/parameters/CeremonySlugNested"
+        - $ref: "#/components/parameters/CeremonySlug"
+      responses:
+        "200":
+          description: Album found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlbumResponse"
+    patch:
+      tags: [Albums]
+      summary: Update a studio curated album
+      operationId: updateStudioAlbum
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/WeddingSlugNested"
+        - $ref: "#/components/parameters/CeremonySlugNested"
+        - $ref: "#/components/parameters/CeremonySlug"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [album]
+              properties:
+                album:
+                  $ref: "#/components/schemas/AlbumUpdateRequest"
+      responses:
+        "200":
+          description: Album updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlbumResponse"
+    delete:
+      tags: [Albums]
+      summary: Delete a studio curated album
+      operationId: deleteStudioAlbum
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/WeddingSlugNested"
+        - $ref: "#/components/parameters/CeremonySlugNested"
+        - $ref: "#/components/parameters/CeremonySlug"
+      responses:
+        "200":
+          description: Album deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  /api/v1/weddings/{wedding_slug}/ceremonies/{ceremony_slug}/albums/{album_slug}/photos:
+    post:
+      tags: [Albums]
+      summary: Add photos to a studio curated album
+      operationId: addStudioAlbumPhotos
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/WeddingSlugNested"
+        - $ref: "#/components/parameters/CeremonySlugNested"
+        - name: album_slug
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AlbumCurateRequest"
+      responses:
+        "200":
+          description: Album updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlbumResponse"
+
+  /api/v1/weddings/{wedding_slug}/ceremonies/{ceremony_slug}/albums/{album_slug}/photos/{photo_id}:
+    delete:
+      tags: [Albums]
+      summary: Remove a photo from a studio curated album
+      operationId: removeStudioAlbumPhoto
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/WeddingSlugNested"
+        - $ref: "#/components/parameters/CeremonySlugNested"
+        - name: album_slug
+          in: path
+          required: true
+          schema: { type: string }
+        - name: photo_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Album updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlbumResponse"
+
+  /api/v1/weddings/{wedding_slug}/ceremonies/{ceremony_slug}/albums/{album_slug}/reorder:
+    patch:
+      tags: [Albums]
+      summary: Reorder photos within a studio curated album
+      operationId: reorderStudioAlbumPhotos
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/WeddingSlugNested"
+        - $ref: "#/components/parameters/CeremonySlugNested"
+        - name: album_slug
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AlbumCurateRequest"
+      responses:
+        "200":
+          description: Album reordered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlbumResponse"
+
+  /api/v1/weddings/{wedding_slug}/ceremonies/{ceremony_slug}/albums/{album_slug}/cover:
+    post:
+      tags: [Albums]
+      summary: Set the cover photo for a studio curated album
+      operationId: setStudioAlbumCover
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/WeddingSlugNested"
+        - $ref: "#/components/parameters/CeremonySlugNested"
+        - name: album_slug
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AlbumCoverRequest"
+      responses:
+        "200":
+          description: Album cover set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlbumResponse"
+
+  /api/v1/weddings/{wedding_slug}/ceremonies/{ceremony_slug}/albums/{album_slug}/share_links:
+    post:
+      tags: [Albums]
+      summary: Create a private share link for a studio curated album
+      operationId: createStudioAlbumShareLink
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/WeddingSlugNested"
+        - $ref: "#/components/parameters/CeremonySlugNested"
+        - name: album_slug
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AlbumShareLinkCreateRequest"
+      responses:
+        "201":
+          description: Album share link created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlbumShareLinkResponse"
+
   /api/v1/storage_connections:
     get:
       tags:
@@ -1671,6 +1913,63 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /api/v1/g/albums/shared/{token}:
+    get:
+      tags: [Albums]
+      summary: View a shared album shell
+      operationId: sharedAlbumShow
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Shared album shell
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SharedAlbumResponse"
+        "404":
+          description: Album share link not found or inactive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/g/albums/shared/{token}/photos:
+    get:
+      tags: [Albums]
+      summary: Browse photos from a shared album
+      operationId: sharedAlbumPhotos
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          description: Shared album photos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SharedAlbumPhotoListResponse"
+        "404":
+          description: Album share link not found or inactive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /api/v1/g/{studio_slug}/{wedding_slug}/ceremonies:
     get:
       tags:
@@ -1708,6 +2007,241 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/g/{studio_slug}/{wedding_slug}/ceremonies/{ceremony_slug}/albums:
+    get:
+      tags: [Albums]
+      summary: List user-created albums owned by the current gallery session
+      operationId: galleryAlbums
+      parameters:
+        - name: studio_slug
+          in: path
+          required: true
+          schema: { type: string }
+        - name: wedding_slug
+          in: path
+          required: true
+          schema: { type: string }
+        - name: ceremony_slug
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: "#/components/parameters/XGalleryToken"
+      responses:
+        "200":
+          description: Session-owned albums
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlbumListResponse"
+    post:
+      tags: [Albums]
+      summary: Create a user-created album
+      operationId: createGalleryAlbum
+      parameters:
+        - name: studio_slug
+          in: path
+          required: true
+          schema: { type: string }
+        - name: wedding_slug
+          in: path
+          required: true
+          schema: { type: string }
+        - name: ceremony_slug
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: "#/components/parameters/XGalleryToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [album]
+              properties:
+                album:
+                  $ref: "#/components/schemas/AlbumCreateRequest"
+      responses:
+        "201":
+          description: Album created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlbumResponse"
+
+  /api/v1/g/{studio_slug}/{wedding_slug}/ceremonies/{ceremony_slug}/albums/{slug}:
+    get:
+      tags: [Albums]
+      summary: Fetch a user-created album owned by the current session
+      operationId: getGalleryAlbum
+      parameters:
+        - name: studio_slug
+          in: path
+          required: true
+          schema: { type: string }
+        - name: wedding_slug
+          in: path
+          required: true
+          schema: { type: string }
+        - name: ceremony_slug
+          in: path
+          required: true
+          schema: { type: string }
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: "#/components/parameters/XGalleryToken"
+      responses:
+        "200":
+          description: Album found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlbumResponse"
+    patch:
+      tags: [Albums]
+      summary: Update a user-created album
+      operationId: updateGalleryAlbum
+      parameters:
+        - name: studio_slug
+          in: path
+          required: true
+          schema: { type: string }
+        - name: wedding_slug
+          in: path
+          required: true
+          schema: { type: string }
+        - name: ceremony_slug
+          in: path
+          required: true
+          schema: { type: string }
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: "#/components/parameters/XGalleryToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [album]
+              properties:
+                album:
+                  $ref: "#/components/schemas/AlbumUpdateRequest"
+      responses:
+        "200":
+          description: Album updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlbumResponse"
+    delete:
+      tags: [Albums]
+      summary: Delete a user-created album
+      operationId: deleteGalleryAlbum
+      parameters:
+        - name: studio_slug
+          in: path
+          required: true
+          schema: { type: string }
+        - name: wedding_slug
+          in: path
+          required: true
+          schema: { type: string }
+        - name: ceremony_slug
+          in: path
+          required: true
+          schema: { type: string }
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: "#/components/parameters/XGalleryToken"
+      responses:
+        "200":
+          description: Album deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  /api/v1/g/{studio_slug}/{wedding_slug}/ceremonies/{ceremony_slug}/albums/{album_slug}/photos:
+    post:
+      tags: [Albums]
+      summary: Add photos to a user-created album
+      operationId: addGalleryAlbumPhotos
+      parameters:
+        - name: studio_slug
+          in: path
+          required: true
+          schema: { type: string }
+        - name: wedding_slug
+          in: path
+          required: true
+          schema: { type: string }
+        - name: ceremony_slug
+          in: path
+          required: true
+          schema: { type: string }
+        - name: album_slug
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: "#/components/parameters/XGalleryToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AlbumCurateRequest"
+      responses:
+        "200":
+          description: Album updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlbumResponse"
+
+  /api/v1/g/{studio_slug}/{wedding_slug}/ceremonies/{ceremony_slug}/albums/{album_slug}/share_links:
+    post:
+      tags: [Albums]
+      summary: Create a private share link for a user-created album
+      operationId: createGalleryAlbumShareLink
+      parameters:
+        - name: studio_slug
+          in: path
+          required: true
+          schema: { type: string }
+        - name: wedding_slug
+          in: path
+          required: true
+          schema: { type: string }
+        - name: ceremony_slug
+          in: path
+          required: true
+          schema: { type: string }
+        - name: album_slug
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: "#/components/parameters/XGalleryToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AlbumShareLinkCreateRequest"
+      responses:
+        "201":
+          description: Album share link created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlbumShareLinkResponse"
 
   /api/v1/g/{studio_slug}/{wedding_slug}/ceremonies/{ceremony_slug}/photos:
     get:
@@ -2809,6 +3343,185 @@ components:
           type: integer
         video_count:
           type: integer
+
+    Album:
+      type: object
+      required:
+        - id
+        - name
+        - slug
+        - album_type
+        - visibility
+        - photos_count
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+          nullable: true
+        album_type:
+          type: string
+          enum:
+            - studio_curated
+            - user_created
+        visibility:
+          type: string
+          enum:
+            - private
+            - shared
+        photos_count:
+          type: integer
+        cover_photo_id:
+          type: string
+          format: uuid
+          nullable: true
+
+    AlbumCreateRequest:
+      type: object
+      required:
+        - name
+        - album_type
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        album_type:
+          type: string
+          enum:
+            - studio_curated
+            - user_created
+        visibility:
+          type: string
+          enum:
+            - private
+            - shared
+
+    AlbumUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        visibility:
+          type: string
+          enum:
+            - private
+            - shared
+
+    AlbumResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          $ref: "#/components/schemas/Album"
+
+    AlbumListResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Album"
+
+    AlbumCurateRequest:
+      type: object
+      required:
+        - photo_ids
+      properties:
+        photo_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        order:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    AlbumCoverRequest:
+      type: object
+      required:
+        - photo_id
+      properties:
+        photo_id:
+          type: string
+          format: uuid
+
+    AlbumShareLinkCreateRequest:
+      type: object
+      required:
+        - label
+        - permissions
+      properties:
+        label:
+          type: string
+        permissions:
+          type: string
+          enum:
+            - view
+            - view_like
+            - view_download
+
+    AlbumShareLinkData:
+      type: object
+      required:
+        - id
+        - token
+        - permissions
+      properties:
+        id:
+          type: string
+          format: uuid
+        token:
+          type: string
+        permissions:
+          type: string
+          enum:
+            - view
+            - view_like
+            - view_download
+        label:
+          type: string
+          nullable: true
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    AlbumShareLinkResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          $ref: "#/components/schemas/AlbumShareLinkData"
 
     StorageConnection:
       type: object
@@ -4067,6 +4780,78 @@ components:
               nullable: true
             has_more:
               type: boolean
+
+    SharedAlbumData:
+      type: object
+      required:
+        - album
+        - permissions
+      properties:
+        album:
+          $ref: "#/components/schemas/Album"
+        permissions:
+          type: string
+          enum:
+            - view
+            - view_like
+            - view_download
+        ceremony:
+          type: object
+          properties:
+            slug:
+              type: string
+            name:
+              type: string
+        wedding:
+          type: object
+          properties:
+            slug:
+              type: string
+            couple_name:
+              type: string
+
+    SharedAlbumResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          $ref: "#/components/schemas/SharedAlbumData"
+
+    SharedAlbumPhotoListResponse:
+      type: object
+      required:
+        - success
+        - data
+        - meta
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/GalleryPhoto"
+        meta:
+          type: object
+          required:
+            - has_more
+            - permissions
+          properties:
+            has_more:
+              type: boolean
+            permissions:
+              type: string
+              enum:
+                - view
+                - view_like
+                - view_download
 
     GalleryPhotoDownloadData:
       type: object
