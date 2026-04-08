@@ -7,6 +7,8 @@ class Photo < ApplicationRecord
   belongs_to :wedding
   belongs_to :studio_storage_connection, optional: true
   belongs_to :upload_batch, optional: true
+  has_many :likes, dependent: :destroy
+  has_many :shortlist_photos, dependent: :destroy
 
   validates :original_key, presence: true
   validates :file_extension, presence: true

@@ -1632,6 +1632,391 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /api/v1/g/{studio_slug}/{wedding_slug}/photos/{photo_id}/like:
+    post:
+      tags:
+        - Gallery
+      summary: Like a photo for the current gallery session
+      operationId: galleryLikePhoto
+      parameters:
+        - name: studio_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: wedding_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: photo_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/XGalleryToken"
+      responses:
+        "200":
+          description: Photo liked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GalleryPhotoStateResponse"
+        "401":
+          description: Invalid session token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Photo not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: Gallery expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      tags:
+        - Gallery
+      summary: Unlike a photo for the current gallery session
+      operationId: galleryUnlikePhoto
+      parameters:
+        - name: studio_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: wedding_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: photo_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/XGalleryToken"
+      responses:
+        "200":
+          description: Photo unliked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GalleryPhotoStateResponse"
+        "401":
+          description: Invalid session token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Photo not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: Gallery expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/g/{studio_slug}/{wedding_slug}/likes:
+    get:
+      tags:
+        - Gallery
+      summary: List liked photos for the current gallery session
+      operationId: galleryLikedPhotos
+      parameters:
+        - name: studio_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: wedding_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/XGalleryToken"
+      responses:
+        "200":
+          description: Liked photos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GalleryPhotoArrayResponse"
+        "401":
+          description: Invalid session token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: Gallery expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/g/{studio_slug}/{wedding_slug}/shortlist:
+    get:
+      tags:
+        - Gallery
+      summary: Fetch the current gallery session shortlist
+      operationId: galleryShortlist
+      parameters:
+        - name: studio_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: wedding_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/XGalleryToken"
+      responses:
+        "200":
+          description: Current shortlist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GalleryShortlistResponse"
+        "401":
+          description: Invalid session token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: Gallery expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/g/{studio_slug}/{wedding_slug}/shortlist/photos:
+    post:
+      tags:
+        - Gallery
+      summary: Add photos to the current gallery session shortlist
+      operationId: galleryShortlistAddPhotos
+      parameters:
+        - name: studio_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: wedding_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/XGalleryToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GalleryShortlistAddRequest"
+      responses:
+        "200":
+          description: Updated shortlist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GalleryShortlistResponse"
+        "401":
+          description: Invalid session token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: One or more photos were not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: Gallery expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/g/{studio_slug}/{wedding_slug}/shortlist/photos/{photo_id}:
+    delete:
+      tags:
+        - Gallery
+      summary: Remove a photo from the current gallery session shortlist
+      operationId: galleryShortlistRemovePhoto
+      parameters:
+        - name: studio_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: wedding_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: photo_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/XGalleryToken"
+      responses:
+        "200":
+          description: Updated shortlist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GalleryShortlistResponse"
+        "401":
+          description: Invalid session token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Photo not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: Gallery expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/g/{studio_slug}/{wedding_slug}/shortlist/reorder:
+    patch:
+      tags:
+        - Gallery
+      summary: Reorder photos in the current gallery session shortlist
+      operationId: galleryShortlistReorder
+      parameters:
+        - name: studio_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: wedding_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/XGalleryToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GalleryShortlistReorderRequest"
+      responses:
+        "200":
+          description: Reordered shortlist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GalleryShortlistResponse"
+        "401":
+          description: Invalid session token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: One or more shortlist photos were not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: Gallery expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/weddings/{wedding_slug}/shortlists:
+    get:
+      tags:
+        - Shortlists
+      summary: List shortlist summaries for a wedding
+      operationId: weddingShortlists
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/WeddingSlugNested"
+      responses:
+        "200":
+          description: Shortlist summaries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudioShortlistSummaryListResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Wedding not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/weddings/{wedding_slug}/shortlists/{id}:
+    get:
+      tags:
+        - Shortlists
+      summary: Fetch shortlist detail for a wedding
+      operationId: weddingShortlist
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/WeddingSlugNested"
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: Shortlist detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudioShortlistDetailResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Shortlist not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   parameters:
     WeddingSlug:
@@ -2856,6 +3241,8 @@ components:
         - id
         - width
         - height
+        - is_liked
+        - is_shortlisted
       properties:
         id:
           type: string
@@ -2875,6 +3262,202 @@ components:
           type: integer
         height:
           type: integer
+        is_liked:
+          type: boolean
+        is_shortlisted:
+          type: boolean
+
+    GalleryPhotoState:
+      type: object
+      required:
+        - id
+        - liked
+        - shortlisted
+      properties:
+        id:
+          type: string
+          format: uuid
+        liked:
+          type: boolean
+        shortlisted:
+          type: boolean
+
+    GalleryPhotoStateResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          $ref: "#/components/schemas/GalleryPhotoState"
+
+    GalleryPhotoArrayResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/GalleryPhoto"
+
+    GalleryShortlistPhoto:
+      allOf:
+        - $ref: "#/components/schemas/GalleryPhoto"
+        - type: object
+          properties:
+            note:
+              type: string
+              nullable: true
+
+    GalleryShortlist:
+      type: object
+      required:
+        - id
+        - name
+        - photo_count
+        - photos
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        photo_count:
+          type: integer
+        photos:
+          type: array
+          items:
+            $ref: "#/components/schemas/GalleryShortlistPhoto"
+
+    GalleryShortlistResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          $ref: "#/components/schemas/GalleryShortlist"
+
+    GalleryShortlistAddRequest:
+      type: object
+      required:
+        - photo_ids
+      properties:
+        photo_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    GalleryShortlistReorderRequest:
+      type: object
+      required:
+        - order
+      properties:
+        order:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    StudioShortlistSummary:
+      type: object
+      required:
+        - id
+        - visitor_name
+        - photo_count
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        visitor_name:
+          type: string
+          nullable: true
+        photo_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    StudioShortlistSummaryListResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudioShortlistSummary"
+
+    StudioShortlistDetailPhoto:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+          format: uuid
+        note:
+          type: string
+          nullable: true
+
+    StudioShortlistDetail:
+      type: object
+      required:
+        - id
+        - visitor_name
+        - photo_count
+        - created_at
+        - photos
+      properties:
+        id:
+          type: string
+          format: uuid
+        visitor_name:
+          type: string
+          nullable: true
+        photo_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        photos:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudioShortlistDetailPhoto"
+
+    StudioShortlistDetailResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          $ref: "#/components/schemas/StudioShortlistDetail"
 
     GalleryPhotoListResponse:
       type: object

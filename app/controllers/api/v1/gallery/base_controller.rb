@@ -35,6 +35,32 @@ module Api
           current_wedding.studio
         end
 
+        def liked_photo_ids
+          @liked_photo_ids ||= Like.where(gallery_session: current_gallery_session).pluck(:photo_id).to_set
+        end
+
+        def shortlisted_photo_ids
+          @shortlisted_photo_ids ||= begin
+            shortlist = Shortlist.find_by(wedding: current_wedding, gallery_session: current_gallery_session)
+            shortlist ? shortlist.shortlist_photos.pluck(:photo_id).to_set : Set.new
+          end
+        end
+
+        def gallery_photo_payload(photo)
+          urls = PhotoUrlBuilder.new(photo).urls
+
+          {
+            id: photo.id,
+            thumbnail_url: urls[:thumbnail],
+            preview_url: urls[:preview],
+            blur_hash: urls[:blur],
+            width: photo.width,
+            height: photo.height,
+            is_liked: liked_photo_ids.include?(photo.id),
+            is_shortlisted: shortlisted_photo_ids.include?(photo.id)
+          }
+        end
+
         def route_matches_session_wedding?
           current_wedding.slug == params[:wedding_slug] && current_studio.slug == params[:studio_slug]
         end

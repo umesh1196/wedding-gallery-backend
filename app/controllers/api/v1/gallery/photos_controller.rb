@@ -57,16 +57,7 @@ module Api
         end
 
         def photo_payload(photo)
-          urls = PhotoUrlBuilder.new(photo).urls
-
-          {
-            id: photo.id,
-            thumbnail_url: urls[:thumbnail],
-            preview_url: urls[:preview],
-            blur_hash: urls[:blur],
-            width: photo.width,
-            height: photo.height
-          }
+          gallery_photo_payload(photo)
         end
       end
     end

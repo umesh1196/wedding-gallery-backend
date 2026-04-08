@@ -1212,29 +1212,42 @@ end
 add_index :likes, [:photo_id, :gallery_session_id], unique: true
 ```
 
-**`POST /api/v1/g/.../photos/:photo_id/like`** — toggle like
-**`DELETE /api/v1/g/.../photos/:photo_id/like`** — unlike
-**`GET /api/v1/g/.../likes`** — all liked photos for session
+**`POST /api/v1/g/.../photos/:photo_id/like`** — ensure liked
+**`DELETE /api/v1/g/.../photos/:photo_id/like`** — ensure unliked
 
-- [ ] Toggle pattern: like if not liked, unlike if liked
-- [ ] Return liked photos list (paginated)
+- [ ] `POST` must be idempotent: repeated requests keep the photo liked
+- [ ] `DELETE` must be idempotent: repeated requests keep the photo unliked
+- [ ] Validate that the liked photo belongs to `current_wedding`
+- [ ] Extend Epic 7 public photo browsing response with `is_liked`
 
-**Acceptance:** Like/unlike works. Duplicate likes prevented. Liked photos retrievable.
+**Acceptance:** Like/unlike works predictably with retries. Duplicate likes prevented. Public photo response can reflect liked state.
 
 ---
 
-### SHORT-1: Create shortlists table and endpoints
-**Priority:** High | **Estimate:** 2 points
+### LIKE-2: Build liked photos listing endpoint
+**Priority:** High | **Estimate:** 1 point
+
+**`GET /api/v1/g/.../likes`** — list liked photos for current session
+
+- [ ] Paginated response
+- [ ] Return the same display fields as Epic 7 public photo browsing
+- [ ] Scope strictly to `current_gallery_session`
+
+**Acceptance:** Visitor can retrieve the set of photos they liked during the current gallery session.
+
+---
+
+### SHORT-1: Create shortlists table with one default shortlist per session
+**Priority:** High | **Estimate:** 1 point
 
 ```ruby
 create_table :shortlists, id: :uuid do |t|
   t.references :wedding, type: :uuid, foreign_key: true, null: false
   t.references :gallery_session, type: :uuid, foreign_key: true, null: false
   t.string :name, default: "My Shortlist"
-  t.boolean :is_shared, default: false
-  t.string :share_token, index: { unique: true }
   t.timestamps
 end
+add_index :shortlists, [:wedding_id, :gallery_session_id], unique: true
 
 create_table :shortlist_photos, id: :uuid do |t|
   t.references :shortlist, type: :uuid, foreign_key: true, null: false
@@ -1246,38 +1259,65 @@ end
 add_index :shortlist_photos, [:shortlist_id, :photo_id], unique: true
 ```
 
-**`POST /api/v1/g/.../shortlist/photos`** — add photo to shortlist
-```json
-{ "photo_id": "uuid" }
-```
+- [ ] Exactly one shortlist per `gallery_session` per `wedding`
+- [ ] No shortlist sharing in Epic 8
+- [ ] Validate that shortlisted photos belong to the same wedding as the shortlist
+- [ ] Decide and document product behavior:
+  shortlist state is session-local unless we later introduce visitor identity persistence
 
-**`DELETE /api/v1/g/.../shortlist/photos/:photo_id`** — remove
-
-**`GET /api/v1/g/.../shortlist`** — view current shortlist
-
-**`PATCH /api/v1/g/.../shortlist/reorder`** — reorder photos
-
-**`POST /api/v1/g/.../shortlist/share`** — generate share link
-
-- [ ] Auto-create shortlist on first add (lazy creation)
-- [ ] Multi-add endpoint: accept array of photo_ids
-- [ ] Share generates `share_token` and sets `is_shared: true`
-- [ ] Photographer can view client shortlists (separate endpoint in studio namespace)
-
-**Acceptance:** Add/remove photos from shortlist. Share link generates. Photographer can view.
+**Acceptance:** Each visitor session gets a single default shortlist for the current wedding.
 
 ---
 
-### SHORT-2: Build photographer shortlist view
+### SHORT-2: Build shortlist item endpoints
+**Priority:** High | **Estimate:** 2 points
+
+**`POST /api/v1/g/.../shortlist/photos`** — add photo(s) to shortlist
+```json
+{ "photo_ids": ["uuid-1", "uuid-2"] }
+```
+
+- [ ] Auto-create shortlist on first add (lazy creation)
+- [ ] Multi-add accepts an array of `photo_ids`
+- [ ] Ignore or report duplicates predictably
+- [ ] Extend Epic 7 public photo browsing response with `is_shortlisted`
+
+**`DELETE /api/v1/g/.../shortlist/photos/:photo_id`** — remove from shortlist
+- [ ] Idempotent remove
+
+**`GET /api/v1/g/.../shortlist`** — view current shortlist
+- [ ] Paginated response
+- [ ] Return shortlist photos in `sort_order`
+
+**`PATCH /api/v1/g/.../shortlist/reorder`** — reorder shortlist photos
+- [ ] Accept ordered photo UUID array
+- [ ] Reordering must only affect the current session shortlist
+
+**Acceptance:** Visitor can add, remove, list, and reorder shortlist photos within one default shortlist.
+
+---
+
+### SHORT-3: Build photographer shortlist views
 **Priority:** High | **Estimate:** 1 point
 
 `GET /api/v1/weddings/:wedding_slug/shortlists`
 
-- [ ] List all shortlists created by gallery visitors
+- [ ] Paginated shortlist summary list
 - [ ] Include visitor name, photo count, created date
-- [ ] Detail view with all shortlisted photos + notes
 
-**Acceptance:** Photographer sees all client shortlists for a wedding.
+`GET /api/v1/weddings/:wedding_slug/shortlists/:id`
+- [ ] Detail view with shortlisted photos + notes
+- [ ] Scope to the current studio's wedding only
+
+**Acceptance:** Photographer can browse shortlist summaries and open a specific shortlist in detail.
+
+---
+
+### Notes on Scope for Epic 8
+- Epic 8 is about selection state and photographer visibility, not public sharing.
+- `is_liked` and `is_shortlisted` are added onto Epic 7 public photo responses here.
+- Likes and shortlists are scoped to the current `gallery_session` unless later product work introduces persistent visitor identity.
+- Shareable shortlist links are deferred to Epic 12.
 
 ---
 

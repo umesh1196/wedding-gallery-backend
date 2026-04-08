@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_08_220000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_08_223000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -46,6 +46,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_08_220000) do
     t.index ["last_active_at"], name: "index_gallery_sessions_on_last_active_at"
     t.index ["session_token_digest"], name: "index_gallery_sessions_on_session_token_digest", unique: true
     t.index ["wedding_id"], name: "index_gallery_sessions_on_wedding_id"
+  end
+
+  create_table "likes", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.uuid "gallery_session_id", null: false
+    t.uuid "photo_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["gallery_session_id"], name: "index_likes_on_gallery_session_id"
+    t.index ["photo_id", "gallery_session_id"], name: "index_likes_on_photo_id_and_gallery_session_id", unique: true
+    t.index ["photo_id"], name: "index_likes_on_photo_id"
   end
 
   create_table "photos", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -88,6 +98,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_08_220000) do
     t.index ["upload_batch_id"], name: "index_photos_on_upload_batch_id"
     t.index ["wedding_id", "created_at"], name: "index_photos_on_wedding_id_and_created_at", where: "((processing_status)::text = 'ready'::text)"
     t.index ["wedding_id"], name: "index_photos_on_wedding_id"
+  end
+
+  create_table "shortlist_photos", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "note"
+    t.uuid "photo_id", null: false
+    t.uuid "shortlist_id", null: false
+    t.integer "sort_order", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["photo_id"], name: "index_shortlist_photos_on_photo_id"
+    t.index ["shortlist_id", "photo_id"], name: "index_shortlist_photos_on_shortlist_id_and_photo_id", unique: true
+    t.index ["shortlist_id", "sort_order"], name: "index_shortlist_photos_on_shortlist_id_and_sort_order"
+    t.index ["shortlist_id"], name: "index_shortlist_photos_on_shortlist_id"
+  end
+
+  create_table "shortlists", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.uuid "gallery_session_id", null: false
+    t.string "name", default: "My Shortlist", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "wedding_id", null: false
+    t.index ["gallery_session_id"], name: "index_shortlists_on_gallery_session_id"
+    t.index ["wedding_id", "gallery_session_id"], name: "index_shortlists_on_wedding_id_and_gallery_session_id", unique: true
+    t.index ["wedding_id"], name: "index_shortlists_on_wedding_id"
   end
 
   create_table "studio_storage_connections", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -170,10 +204,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_08_220000) do
 
   add_foreign_key "ceremonies", "weddings"
   add_foreign_key "gallery_sessions", "weddings"
+  add_foreign_key "likes", "gallery_sessions"
+  add_foreign_key "likes", "photos"
   add_foreign_key "photos", "ceremonies"
   add_foreign_key "photos", "studio_storage_connections"
   add_foreign_key "photos", "upload_batches"
   add_foreign_key "photos", "weddings"
+  add_foreign_key "shortlist_photos", "photos"
+  add_foreign_key "shortlist_photos", "shortlists"
+  add_foreign_key "shortlists", "gallery_sessions"
+  add_foreign_key "shortlists", "weddings"
   add_foreign_key "studio_storage_connections", "studios"
   add_foreign_key "upload_batches", "ceremonies"
   add_foreign_key "upload_batches", "studios"
