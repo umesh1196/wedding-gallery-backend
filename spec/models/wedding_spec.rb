@@ -66,4 +66,14 @@ RSpec.describe Wedding, type: :model do
       expect(build(:wedding, expires_at: 1.day.from_now, is_active: true)).not_to be_expired
     end
   end
+
+  describe "#archived?" do
+    it "is true when archived_at is present" do
+      expect(build(:wedding, archived_at: Time.current)).to be_archived
+    end
+
+    it "is false when archived_at is nil" do
+      expect(build(:wedding, archived_at: nil)).not_to be_archived
+    end
+  end
 end

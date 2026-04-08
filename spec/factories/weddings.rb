@@ -8,6 +8,7 @@ FactoryBot.define do
     allow_download { "shortlist" }
     allow_comments { true }
     is_active { true }
+    archived_at { nil }
     total_photos { 0 }
     total_videos { 0 }
     metadata { {} }

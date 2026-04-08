@@ -1430,27 +1430,38 @@ add_column :photos, :comments_count, :integer, default: 0, null: false
 `GalleryExpiryJob` — runs daily via Solid Queue recurring schedule.
 
 - [ ] Find weddings where `expires_at < Time.current AND is_active = true`
-- [ ] Set `is_active = false`
-- [ ] Invalidate all gallery sessions
+- [ ] Mark wedding as expired by deactivating public access
+- [ ] Invalidate all gallery sessions in bulk
+- [ ] Make the job idempotent so reruns are safe
+- [ ] Keep this job focused on access expiry only, not storage deletion
 - [ ] Send notification to photographer (optional, Phase 2)
 
-**Acceptance:** Expired galleries deactivate automatically. Sessions invalidated.
+**Acceptance:** Expired galleries deactivate automatically. Sessions are invalidated. Re-running the job does not change already-expired weddings.
 
 ---
 
 ### EXPIRY-2: Build storage cleanup cron job
 **Priority:** Medium | **Estimate:** 1 point
 
-`StorageCleanupJob` — runs weekly.
+`WeddingArchiveCleanupJob` — runs weekly.
 
 - [ ] Find weddings where `is_active = false AND expires_at < 30.days.ago`
 - [ ] Use `Storage::Service.list(prefix:)` with `Storage::KeyBuilder.wedding_prefix` to find all objects
 - [ ] Use `Storage::Service.delete_batch(keys:)` to bulk delete — provider-agnostic
 - [ ] Delete all photo/ceremony records (cascade)
-- [ ] Mark wedding as `"archived"` or delete
+- [ ] Mark wedding as archived (or set `archived_at`) so reruns skip it
+- [ ] Keep the existing `StorageCleanupJob` as the low-level utility for deleting explicit key lists; do not overload it with recurring wedding archival behavior
+- [ ] Make archive cleanup idempotent and safe to retry if storage deletion partially fails
 - [ ] Log storage reclaimed
 
-**Acceptance:** Old expired galleries cleaned from any configured storage provider automatically.
+**Acceptance:** Old expired galleries are cleaned from any configured storage provider automatically. Already-archived weddings are skipped on reruns.
+
+**Scope Notes**
+- Expiry and archival are separate lifecycle steps:
+  - expiry removes access
+  - archival removes old data later
+- Prefer an explicit archived marker (`archived_at` or status) over inferring everything from `is_active`
+- First pass does not need outbound notifications or storage usage billing math
 
 ---
 

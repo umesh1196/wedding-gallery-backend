@@ -35,6 +35,10 @@ class Wedding < ApplicationRecord
     expires_at < Time.current || !is_active
   end
 
+  def archived?
+    archived_at.present?
+  end
+
   def ceremony_count
     ceremonies.size
   end
