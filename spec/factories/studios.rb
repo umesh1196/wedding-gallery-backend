@@ -1,6 +1,6 @@
 FactoryBot.define do
   factory :studio do
-    sequence(:email) { |n| "studio#{n}@example.com" }
+    sequence(:email) { |n| "studio#{n}-#{SecureRandom.hex(4)}@example.com" }
     password { "password123" }
     studio_name { "Test Studio" }
     phone { "+1234567890" }

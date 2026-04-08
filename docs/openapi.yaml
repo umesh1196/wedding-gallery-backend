@@ -14,6 +14,9 @@ tags:
   - name: Studio
   - name: Weddings
   - name: Ceremonies
+  - name: Photos
+  - name: Storage Connections
+  - name: Upload Batches
 paths:
   /health:
     get:
@@ -1082,6 +1085,365 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /api/v1/storage_connections:
+    get:
+      tags:
+        - Storage Connections
+      summary: List saved storage connections for the current studio
+      operationId: listStorageConnections
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Studio storage connections
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageConnectionListResponse"
+    post:
+      tags:
+        - Storage Connections
+      summary: Create a saved storage connection
+      operationId: createStorageConnection
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - storage_connection
+              properties:
+                storage_connection:
+                  $ref: "#/components/schemas/StorageConnectionCreateRequest"
+      responses:
+        "201":
+          description: Storage connection created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageConnectionResponse"
+        "401":
+          description: Missing, invalid, or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/storage_connections/{id}:
+    patch:
+      tags:
+        - Storage Connections
+      summary: Update a saved storage connection
+      operationId: updateStorageConnection
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - storage_connection
+              properties:
+                storage_connection:
+                  $ref: "#/components/schemas/StorageConnectionUpdateRequest"
+      responses:
+        "200":
+          description: Storage connection updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageConnectionResponse"
+        "404":
+          description: Storage connection not found for current studio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      tags:
+        - Storage Connections
+      summary: Deactivate a saved storage connection
+      operationId: deleteStorageConnection
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: Storage connection deactivated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageConnectionResponse"
+        "404":
+          description: Storage connection not found for current studio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/upload_batches/{id}:
+    get:
+      tags:
+        - Upload Batches
+      summary: Fetch upload/import batch progress
+      operationId: getUploadBatch
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: Batch progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadBatchResponse"
+        "404":
+          description: Upload batch not found for current studio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/weddings/{wedding_slug}/ceremonies/{ceremony_slug}/photos:
+    get:
+      tags:
+        - Photos
+      summary: List ceremony photos for the studio dashboard
+      operationId: listPhotos
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/WeddingSlugNested"
+        - $ref: "#/components/parameters/CeremonySlugNested"
+        - name: processing_status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - pending
+              - processing
+              - ready
+              - failed
+      responses:
+        "200":
+          description: Ceremony photos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhotoListResponse"
+
+  /api/v1/weddings/{wedding_slug}/ceremonies/{ceremony_slug}/photos/import/discover:
+    post:
+      tags:
+        - Photos
+      summary: Discover importable files from a saved storage connection
+      operationId: discoverPhotoImport
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/WeddingSlugNested"
+        - $ref: "#/components/parameters/CeremonySlugNested"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PhotoImportDiscoverRequest"
+      responses:
+        "200":
+          description: Importable files discovered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhotoImportDiscoverResponse"
+
+  /api/v1/weddings/{wedding_slug}/ceremonies/{ceremony_slug}/photos/import:
+    post:
+      tags:
+        - Photos
+      summary: Queue a cloud photo import
+      operationId: importPhotos
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/WeddingSlugNested"
+        - $ref: "#/components/parameters/CeremonySlugNested"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PhotoImportRequest"
+      responses:
+        "201":
+          description: Photos queued for import
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhotoListWithMetaResponse"
+        "200":
+          description: All submitted files were duplicates and skipped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhotoListWithMetaResponse"
+
+  /api/v1/weddings/{wedding_slug}/ceremonies/{ceremony_slug}/photos/presign:
+    post:
+      tags:
+        - Photos
+      summary: Create presigned upload URLs for direct photo upload
+      operationId: presignPhotos
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/WeddingSlugNested"
+        - $ref: "#/components/parameters/CeremonySlugNested"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PhotoPresignRequest"
+      responses:
+        "201":
+          description: Presigned upload URLs created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhotoPresignResponse"
+
+  /api/v1/weddings/{wedding_slug}/ceremonies/{ceremony_slug}/photos/reorder:
+    patch:
+      tags:
+        - Photos
+      summary: Reorder ceremony photos by id
+      operationId: reorderPhotos
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/WeddingSlugNested"
+        - $ref: "#/components/parameters/CeremonySlugNested"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PhotoReorderRequest"
+      responses:
+        "200":
+          description: Photos reordered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhotoListResponse"
+
+  /api/v1/photos/{id}/confirm:
+    post:
+      tags:
+        - Photos
+      summary: Confirm a direct-uploaded photo and enqueue processing
+      operationId: confirmPhoto
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: Photo confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhotoResponse"
+
+  /api/v1/photos/{id}/retry_import:
+    post:
+      tags:
+        - Photos
+      summary: Retry a failed photo import
+      operationId: retryPhotoImport
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: Import retry queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhotoResponse"
+
+  /api/v1/photos/{id}/retry_processing:
+    post:
+      tags:
+        - Photos
+      summary: Retry failed photo processing
+      operationId: retryPhotoProcessing
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: Processing retry queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhotoResponse"
+
+  /api/v1/photos/{id}/set_cover:
+    post:
+      tags:
+        - Photos
+      summary: Set a photo as the ceremony cover
+      operationId: setPhotoCover
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: Cover photo updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhotoResponse"
+
+  /api/v1/photos/{id}:
+    delete:
+      tags:
+        - Photos
+      summary: Delete a photo and enqueue storage cleanup
+      operationId: deletePhoto
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: Photo deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
 components:
   parameters:
     WeddingSlug:
@@ -1105,6 +1467,20 @@ components:
       schema:
         type: string
       example: mehendi
+    CeremonySlugNested:
+      name: ceremony_slug
+      in: path
+      required: true
+      schema:
+        type: string
+      example: mehendi
+    ResourceId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
 
   securitySchemes:
     bearerAuth:
@@ -1356,6 +1732,455 @@ components:
           type: integer
         video_count:
           type: integer
+
+    StorageConnection:
+      type: object
+      required:
+        - id
+        - label
+        - provider
+        - bucket
+        - is_default
+        - active
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        provider:
+          type: string
+          enum:
+            - cloudflare_r2
+            - backblaze_b2
+        account_id:
+          type: string
+          nullable: true
+        bucket:
+          type: string
+        region:
+          type: string
+          nullable: true
+        endpoint:
+          type: string
+          nullable: true
+        base_prefix:
+          type: string
+          nullable: true
+        is_default:
+          type: boolean
+        active:
+          type: boolean
+
+    StorageConnectionCreateRequest:
+      type: object
+      required:
+        - label
+        - provider
+        - bucket
+        - access_key_ciphertext
+        - secret_key_ciphertext
+      properties:
+        label:
+          type: string
+        provider:
+          type: string
+          enum:
+            - cloudflare_r2
+            - backblaze_b2
+        account_id:
+          type: string
+        bucket:
+          type: string
+        region:
+          type: string
+        endpoint:
+          type: string
+        access_key_ciphertext:
+          type: string
+        secret_key_ciphertext:
+          type: string
+        base_prefix:
+          type: string
+        is_default:
+          type: boolean
+        active:
+          type: boolean
+
+    StorageConnectionUpdateRequest:
+      type: object
+      properties:
+        label:
+          type: string
+        account_id:
+          type: string
+        bucket:
+          type: string
+        region:
+          type: string
+        endpoint:
+          type: string
+        access_key_ciphertext:
+          type: string
+        secret_key_ciphertext:
+          type: string
+        base_prefix:
+          type: string
+        is_default:
+          type: boolean
+        active:
+          type: boolean
+
+    StorageConnectionResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          $ref: "#/components/schemas/StorageConnection"
+
+    StorageConnectionListResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/StorageConnection"
+
+    UploadBatch:
+      type: object
+      required:
+        - id
+        - source_type
+        - total_files
+        - completed_files
+        - failed_files
+        - skipped_files
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        source_type:
+          type: string
+          enum:
+            - import
+            - direct_upload
+        total_files:
+          type: integer
+        completed_files:
+          type: integer
+        failed_files:
+          type: integer
+        skipped_files:
+          type: integer
+        status:
+          type: string
+          enum:
+            - in_progress
+            - completed
+            - partial
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    UploadBatchResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          $ref: "#/components/schemas/UploadBatch"
+
+    Photo:
+      type: object
+      required:
+        - id
+        - original_filename
+        - file_extension
+        - width
+        - height
+        - aspect_ratio
+        - sort_order
+        - is_cover
+        - ingestion_status
+        - processing_status
+        - urls
+      properties:
+        id:
+          type: string
+          format: uuid
+        original_filename:
+          type: string
+          nullable: true
+        file_extension:
+          type: string
+        width:
+          type: integer
+        height:
+          type: integer
+        aspect_ratio:
+          type: string
+        sort_order:
+          type: integer
+        is_cover:
+          type: boolean
+        ingestion_status:
+          type: string
+          enum:
+            - pending_import
+            - queued
+            - uploading
+            - copied
+            - failed
+        processing_status:
+          type: string
+          enum:
+            - pending
+            - processing
+            - ready
+            - failed
+        urls:
+          type: object
+          additionalProperties: true
+
+    PhotoResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          $ref: "#/components/schemas/Photo"
+
+    PhotoListResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Photo"
+
+    PhotoListWithMetaResponse:
+      type: object
+      required:
+        - success
+        - data
+        - meta
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Photo"
+        meta:
+          type: object
+          properties:
+            queued_count:
+              type: integer
+            skipped_count:
+              type: integer
+            upload_batch_id:
+              type: string
+              format: uuid
+
+    PhotoImportFile:
+      type: object
+      required:
+        - source_key
+      properties:
+        source_key:
+          type: string
+        filename:
+          type: string
+        content_type:
+          type: string
+        byte_size:
+          type: integer
+        etag:
+          type: string
+
+    PhotoImportDiscoverRequest:
+      type: object
+      required:
+        - connection_id
+      properties:
+        connection_id:
+          type: string
+          format: uuid
+        prefix:
+          type: string
+
+    PhotoImportDiscoverResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          properties:
+            connection_id:
+              type: string
+              format: uuid
+            provider:
+              type: string
+            bucket:
+              type: string
+            prefix:
+              type: string
+            files:
+              type: array
+              items:
+                $ref: "#/components/schemas/PhotoImportFile"
+
+    PhotoImportRequest:
+      type: object
+      required:
+        - connection_id
+        - files
+      properties:
+        connection_id:
+          type: string
+          format: uuid
+        files:
+          type: array
+          items:
+            $ref: "#/components/schemas/PhotoImportFile"
+
+    PhotoPresignFile:
+      type: object
+      required:
+        - filename
+        - content_type
+        - byte_size
+      properties:
+        filename:
+          type: string
+        content_type:
+          type: string
+        byte_size:
+          type: integer
+
+    PhotoPresignRequest:
+      type: object
+      required:
+        - files
+      properties:
+        files:
+          type: array
+          items:
+            $ref: "#/components/schemas/PhotoPresignFile"
+
+    PhotoPresignData:
+      type: object
+      required:
+        - photo_id
+        - presigned_url
+        - object_key
+        - headers
+      properties:
+        photo_id:
+          type: string
+          format: uuid
+        presigned_url:
+          type: string
+          format: uri
+        object_key:
+          type: string
+        headers:
+          type: object
+          additionalProperties: true
+
+    PhotoPresignResponse:
+      type: object
+      required:
+        - success
+        - data
+        - meta
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/PhotoPresignData"
+        meta:
+          type: object
+          properties:
+            upload_batch_id:
+              type: string
+              format: uuid
+
+    PhotoReorderRequest:
+      type: object
+      required:
+        - order
+      properties:
+        order:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    DeleteResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            deleted:
+              type: boolean
 
     CeremonyCreateRequest:
       type: object

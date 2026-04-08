@@ -5,6 +5,7 @@ class Wedding < ApplicationRecord
 
   belongs_to :studio
   has_many :ceremonies, dependent: :destroy
+  has_many :photos, dependent: :destroy
 
   before_validation :normalize_slug
   before_validation :generate_slug, if: :should_generate_slug?

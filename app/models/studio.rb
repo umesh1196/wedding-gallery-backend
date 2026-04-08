@@ -1,6 +1,8 @@
 class Studio < ApplicationRecord
   has_secure_password
   has_many :weddings, dependent: :destroy
+  has_many :studio_storage_connections, dependent: :destroy
+  has_many :upload_batches, dependent: :destroy
 
   HEX_COLOR_FORMAT = /\A#(?:\h{3}|\h{6})\z/
   ALLOWED_FONTS = [

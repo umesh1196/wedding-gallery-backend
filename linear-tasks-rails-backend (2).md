@@ -515,7 +515,29 @@ Templates:
 
 ---
 
-## Epic 6: Photo Upload & Processing
+## Epic 6: Photo Import, Upload & Processing
+
+### Epic Goal
+Photographers should be able to get large wedding photo sets into the platform without manual one-by-one uploads.
+
+This epic must support **both** ingestion paths:
+- direct browser upload to gallery-managed storage via presigned URLs
+- direct import from existing photographer cloud storage such as **Backblaze B2** or **Cloudflare R2**
+
+The system should treat both paths the same after ingestion:
+- create `Photo` records
+- copy or place originals into gallery-managed storage
+- process thumbnails + blur placeholders
+- expose stable photo URLs for studio and gallery APIs
+
+Recommended product stance:
+- **Primary real-world workflow:** import from photographer storage
+- **Fallback workflow:** direct upload via presigned URLs
+- **Serving layer:** gallery-managed storage, not third-party source URLs
+- **Connection model:** studio-specific saved storage connections, with optional env-based global fallback for local development/admin use
+- **Original format policy:** preserve the original file bytes and extension in gallery-managed storage; generate derivative formats separately
+
+---
 
 ### PHOTO-1: Create photos table and model
 **Priority:** Urgent | **Estimate:** 1 point
@@ -523,40 +545,51 @@ Templates:
 ```ruby
 create_table :photos, id: :uuid do |t|
   t.references :ceremony, type: :uuid, foreign_key: true, null: false
-  t.references :wedding, type: :uuid, foreign_key: true, null: false  # denormalized
+  t.references :wedding, type: :uuid, foreign_key: true, null: false
 
-  # Storage keys (provider-agnostic, NOT full URLs)
-  t.string :original_key, null: false        # studios/{sid}/weddings/{wid}/originals/{pid}.jpg
-  t.string :thumbnail_key                    # studios/{sid}/weddings/{wid}/thumbnails/{pid}.webp
+  # Storage keys in gallery-managed storage
+  t.string :original_key, null: false
+  t.string :thumbnail_key
 
-  # Blur placeholder (tiny ~200 bytes, stored inline in DB — NOT in storage)
-  t.text :blur_data_uri                      # "data:image/webp;base64,UklGR..."
+  # Original source metadata
+  t.string :source_provider, null: false, default: "gallery_storage"  # gallery_storage | backblaze_b2 | cloudflare_r2 | imported
+  t.string :source_bucket
+  t.string :source_key
+  t.string :source_etag
 
-  # Image dimensions (extracted from original on upload)
+  # Small inline placeholder
+  t.text :blur_data_uri
+
+  # Image dimensions
   t.integer :width, null: false, default: 0
   t.integer :height, null: false, default: 0
-  # aspect_ratio as generated column: width::decimal / height::decimal
 
   # File metadata
   t.bigint :file_size_bytes, null: false, default: 0
-  t.string :mime_type, null: false, default: 'image/jpeg'
+  t.string :mime_type, null: false, default: "image/jpeg"
   t.string :original_filename
+  t.string :file_extension, null: false, default: "jpg"
 
-  # EXIF (camera info, date taken, GPS)
+  # EXIF metadata
   t.jsonb :exif_data, default: {}
 
   # Ordering & display
   t.integer :sort_order, null: false, default: 0
   t.boolean :is_cover, default: false
 
-  # Processing state: uploading → processing → ready → failed
-  t.string :status, null: false, default: 'uploading'
-  t.string :status_error
+  # Ingestion state: how the original lands in gallery-managed storage
+  t.string :ingestion_status, null: false, default: "pending_import" # pending_import | queued | uploading | copied | failed
+  t.string :ingestion_error
+  t.datetime :ingested_at
+
+  # Processing state: how derivatives/metadata are generated after ingestion
+  t.string :processing_status, null: false, default: "pending"       # pending | processing | ready | failed
+  t.string :processing_error
+  t.datetime :processed_at
 
   t.timestamps
 end
 
-# Add generated column for aspect_ratio
 execute <<-SQL
   ALTER TABLE photos ADD COLUMN aspect_ratio DECIMAL(5,3)
     GENERATED ALWAYS AS (
@@ -565,141 +598,262 @@ execute <<-SQL
 SQL
 ```
 
-- [ ] Store provider-agnostic R2/B2/S3 object keys (NOT full URLs)
-- [ ] `blur_data_uri` stored inline in Postgres (~200 bytes per photo, eliminates HTTP request)
-- [ ] `aspect_ratio` as generated column — frontend needs this for masonry grid before images load
-- [ ] `status` state machine: `uploading → processing → ready` (or `→ failed`)
-- [ ] Only 2 stored variants: original + thumbnail (preview/full via Imgproxy on demand)
+- [ ] Store gallery-serving object keys, not full URLs
+- [ ] Preserve source metadata for audit/debug/reimport
+- [ ] `blur_data_uri` stored inline in Postgres
+- [ ] `aspect_ratio` generated column for frontend layout
+- [ ] Preserve original file format and extension in storage
+- [ ] Split state into two independent tracks:
+  - ingestion: `pending_import` → `queued` → `uploading`/`copied` or `failed`
+  - processing: `pending` → `processing` → `ready` or `failed`
 
 ```ruby
-# Indexes
-add_index :photos, [:ceremony_id, :sort_order], where: "status = 'ready'"
-add_index :photos, [:wedding_id, :created_at], where: "status = 'ready'"
-add_index :photos, [:status, :created_at], where: "status IN ('uploading', 'processing')"
+add_index :photos, [:ceremony_id, :sort_order], where: "processing_status = 'ready'"
+add_index :photos, [:wedding_id, :created_at], where: "processing_status = 'ready'"
+add_index :photos, [:ingestion_status, :created_at], where: "ingestion_status IN ('pending_import', 'queued', 'uploading')"
+add_index :photos, [:processing_status, :created_at], where: "processing_status IN ('pending', 'processing')"
 add_index :photos, :ceremony_id, where: "is_cover = true"
+add_index :photos, [:ceremony_id, :source_provider, :source_bucket, :source_key, :source_etag], unique: true, where: "source_key IS NOT NULL", name: "idx_photos_unique_import_source"
 ```
 
 - [ ] Model: `belongs_to :ceremony`, `belongs_to :wedding`
-- [ ] Denormalized `wedding_id` for fast full-wedding queries
-- [ ] Validations: status inclusion, mime_type format
+- [ ] Denormalized `wedding_id` for fast queries
+- [ ] Validations for mime type, source provider, ingestion status, processing status
+- [ ] Duplicate protection for repeated imports from the same source object + etag
 
-**Acceptance:** Photo records create with proper references. Aspect ratio auto-calculates. Partial indexes work.
+**Acceptance:** Photo records support both imported and directly uploaded assets, preserve original file type, track ingestion/processing independently, and reject duplicate imports safely.
 
 ---
 
-### PHOTO-2: Build presigned URL generation for direct upload
+### PHOTO-2: Build source connection abstraction
 **Priority:** Urgent | **Estimate:** 2 points
 
-`POST /api/v1/weddings/:wedding_slug/ceremonies/:ceremony_slug/photos/presign`
+Create a provider-agnostic source adapter layer for:
+- Backblaze B2
+- Cloudflare R2
+
+Connection model:
+- Each studio owns one or more saved storage connections
+- Import requests should use a `connection_id` or the studio's default connection
+- Global env credentials may exist only as a development/admin fallback, not the primary production model
+
+Add a table for saved studio-owned connections:
+
+```ruby
+create_table :studio_storage_connections, id: :uuid do |t|
+  t.references :studio, type: :uuid, foreign_key: true, null: false
+  t.string :label, null: false
+  t.string :provider, null: false                    # backblaze_b2 | cloudflare_r2
+  t.string :account_id
+  t.string :bucket, null: false
+  t.string :region
+  t.string :endpoint
+  t.string :access_key_ciphertext, null: false
+  t.string :secret_key_ciphertext, null: false
+  t.string :base_prefix
+  t.boolean :is_default, default: false, null: false
+  t.boolean :active, default: true, null: false
+  t.timestamps
+end
+
+add_index :studio_storage_connections, [:studio_id, :is_default], where: "is_default = true", unique: true, name: "idx_studio_storage_connections_one_default"
+```
+
+Example:
+```ruby
+module PhotoSources
+  class Base
+    def list(prefix:); end
+    def head(key:); end
+    def presigned_download_url(key:, expires_in: 3600); end
+    def stream_to_tempfile(key:); end
+  end
+end
+```
+
+- [ ] Add `StudioStorageConnection` model with encrypted credentials
+- [ ] Use Rails encrypted attributes or equivalent application-level encryption
+- [ ] Scope all connections to a studio
+- [ ] Support multiple connections per studio with one default
+- [ ] Add env-based global fallback for development/admin workflows only
+- [ ] Support credential rotation without losing import history
+- [ ] Support source bucket + optional prefix per studio or wedding
+- [ ] Normalize provider responses into one interface
+- [ ] Support listing objects by prefix/folder
+- [ ] Support metadata lookup: size, content type, etag, last modified
+- [ ] Add connection test/health check action before import is allowed
+
+**Acceptance:** The app can talk to either B2 or R2 through one internal interface using studio-owned saved connections.
+
+---
+
+### PHOTO-3: Build cloud import discovery endpoint
+**Priority:** Urgent | **Estimate:** 2 points
+
+`POST /api/v1/weddings/:wedding_slug/ceremonies/:ceremony_slug/photos/import/discover`
 
 ```json
-// Request
 {
-  "files": [
-    { "filename": "DSC_0012.jpg", "content_type": "image/jpeg", "byte_size": 4500000 },
-    { "filename": "DSC_0013.jpg", "content_type": "image/jpeg", "byte_size": 3800000 }
-  ]
+  "connection_id": "uuid",
+  "prefix": "2026/aditi-karan/mehendi/"
 }
+```
 
-// Response
+Response:
+```json
 {
-  "data": [
+  "data": {
+    "connection_id": "uuid",
+    "provider": "cloudflare_r2",
+    "bucket": "photographer-archive",
+    "prefix": "2026/aditi-karan/mehendi/",
+    "files": [
+      {
+        "source_key": "2026/aditi-karan/mehendi/DSC_0012.jpg",
+        "filename": "DSC_0012.jpg",
+        "content_type": "image/jpeg",
+        "byte_size": 4500000,
+        "etag": "abc123"
+      }
+    ]
+  }
+}
+```
+
+- [ ] Resolve connection from `connection_id` or studio default connection
+- [ ] Ensure the connection belongs to the authenticated studio
+- [ ] Validate provider is one of `backblaze_b2`, `cloudflare_r2`
+- [ ] List candidate image files from the connected bucket/prefix
+- [ ] Filter to supported file types: jpg, jpeg, png, webp, heic
+- [ ] Return metadata only; no DB writes yet
+- [ ] Cap discovery result size per request or paginate it
+- [ ] Return cursor/continuation token if provider listing is paginated
+- [ ] Support prefix normalization using connection `base_prefix`
+
+**Acceptance:** Photographer can select one of their saved storage connections and preview importable files from a folder/prefix.
+
+---
+
+### PHOTO-4: Build cloud import creation endpoint
+**Priority:** Urgent | **Estimate:** 2 points
+
+`POST /api/v1/weddings/:wedding_slug/ceremonies/:ceremony_slug/photos/import`
+
+```json
+{
+  "connection_id": "uuid",
+  "files": [
     {
-      "photo_id": "uuid-1",
-      "presigned_url": "https://provider-url...",
-      "object_key": "studios/abc/weddings/def/originals/uuid-1.jpg",
-      "headers": { "Content-Type": "image/jpeg" }
+      "source_key": "weddings/priya/haldi/DSC_0012.jpg",
+      "filename": "DSC_0012.jpg",
+      "content_type": "image/jpeg",
+      "byte_size": 4500000,
+      "etag": "abc123"
     }
   ]
 }
 ```
 
-- [ ] Use `Storage::KeyBuilder.original(...)` to generate provider-agnostic keys
-- [ ] Use `Storage::Service.presigned_upload_url(...)` — works with any S3-compatible provider
-- [ ] Create `Photo` record with `status: "uploading"`
-- [ ] Validate file types (jpg, jpeg, png, webp, heic)
-- [ ] Validate file size (< 30MB per file)
-- [ ] Batch: accept up to 50 files per request
-- [ ] Return presigned URLs + photo IDs so frontend can upload directly to storage
+- [ ] Create `Photo` records in `pending_import`
+- [ ] Resolve source config from studio-owned connection
+- [ ] Revalidate every selected source object server-side with `head` before record creation
+- [ ] Store canonical source metadata from provider, not from client-submitted payload
+- [ ] Store `source_provider`, `source_bucket`, `source_key`, `source_etag`
+- [ ] Allocate final gallery-managed `original_key` up front using the true file extension
+- [ ] Create an `upload_batch`/`import_batch` record for progress tracking
+- [ ] Enqueue `PhotoImportJob` per file
+- [ ] Make request idempotent using unique source identity
+- [ ] Return skipped duplicates separately from newly queued files
 
-**Acceptance:** Frontend can use presigned URLs to PUT files directly to whichever provider is configured. Photo records created in uploading state.
+**Acceptance:** Import request creates photo records and background jobs using the studio's saved storage connection without requiring manual uploads.
 
 ---
 
-### PHOTO-3: Build upload confirmation endpoint
+### PHOTO-5: Build presigned direct-upload endpoint
+**Priority:** High | **Estimate:** 2 points
+
+Keep direct upload as a supported fallback for cases where:
+- files are not already in B2/R2
+- photographer uploads from laptop/browser
+- quick ad hoc additions are needed
+
+`POST /api/v1/weddings/:wedding_slug/ceremonies/:ceremony_slug/photos/presign`
+
+- [ ] Use `Storage::KeyBuilder.original(...)`
+- [ ] Use `Storage::Service.presigned_upload_url(...)`
+- [ ] Create `Photo` records with `ingestion_status: "uploading"` and `processing_status: "pending"`
+- [ ] Validate up to 50 files per request
+- [ ] Validate type and size (< 30MB per file)
+- [ ] Set `source_provider = "gallery_storage"`
+- [ ] Preserve original extension in `original_key`
+
+**Acceptance:** Frontend can still upload directly to gallery storage when needed.
+
+---
+
+### PHOTO-6: Build upload confirmation and retry endpoints
 **Priority:** Urgent | **Estimate:** 1 point
 
+Primary confirmation path:
+
 `POST /api/v1/photos/:id/confirm`
+- used after direct browser upload
 
-After frontend uploads to storage using presigned URL, it calls this to trigger processing.
+Retry/admin paths:
 
-- [ ] Use `Storage::Service.exists?(key:)` to verify the object exists in storage
-- [ ] Update `status` to `"processing"`
+`POST /api/v1/photos/:id/retry_import`
+- re-enqueue import if ingestion failed
+
+`POST /api/v1/photos/:id/retry_processing`
+- re-enqueue processing if derivatives failed
+
+- [ ] Verify object exists in gallery-managed storage
+- [ ] Mark ingestion as completed (`copied`/`ingested_at`) when confirmed
+- [ ] Transition processing to `pending` or `processing`
 - [ ] Enqueue `PhotoProcessingJob`
 - [ ] Return photo record
+- [ ] Make confirmation idempotent
+- [ ] Retry endpoints should be safe and state-aware
 
-**Acceptance:** Confirm triggers background processing. Invalid confirmations rejected.
+**Acceptance:** Direct uploads can be confirmed once, and failed imports/processing can be retried explicitly without introducing ambiguous state.
 
 ---
 
-### PHOTO-4: Build PhotoProcessingJob (thumbnail + blur only)
+### PHOTO-7: Build PhotoImportJob
 **Priority:** Urgent | **Estimate:** 3 points
 
-Simplified pipeline — only generates thumbnail and blur placeholder. Preview/full handled by Imgproxy on demand.
+This job copies a source object from B2/R2 into gallery-managed storage.
 
 ```ruby
-class PhotoProcessingJob < ApplicationJob
-  queue_as :images
-  retry_on StandardError, wait: :polynomially_longer, attempts: 3
+class PhotoImportJob < ApplicationJob
+  queue_as :imports
 
   def perform(photo_id)
     photo = Photo.find(photo_id)
-    photo.update!(status: "processing")
+    photo.update!(ingestion_status: "uploading", ingestion_error: nil)
 
-    # Download from whichever provider is configured
-    tempfile = Storage::Service.download_to_tempfile(key: photo.original_key)
+    source = PhotoSources.build(photo.source_provider, bucket: photo.source_bucket)
+    if source.supports_server_side_copy_to_gallery_storage?
+      source.copy_to_gallery_storage(photo.source_key, destination_key: photo.original_key)
+    else
+      tempfile = source.stream_to_tempfile(photo.source_key)
+      Storage::Service.new.upload_file(
+        key: photo.original_key,
+        file_path: tempfile.path,
+        content_type: photo.mime_type
+      )
+    end
 
-    # Process with ruby-vips
-    image = Vips::Image.new_from_file(tempfile.path)
-
-    # Generate thumbnail (300px wide, WebP, quality 60)
-    thumb = image.thumbnail_image(300)
-    thumb_buf = thumb.webpsave_buffer(Q: 60)
-
-    # Generate blur placeholder (20px wide, base64 — stored in DB)
-    blur = image.thumbnail_image(20)
-    blur_buf = blur.webpsave_buffer(Q: 30)
-    blur_data_uri = "data:image/webp;base64,#{Base64.strict_encode64(blur_buf)}"
-
-    # Upload thumbnail via Storage::Service
-    thumb_key = Storage::KeyBuilder.thumbnail(
-      studio_id: photo.wedding.studio_id,
-      wedding_id: photo.wedding_id,
-      photo_id: photo.id
-    )
-    Storage::Service.upload(key: thumb_key, body: thumb_buf, content_type: "image/webp")
-
-    # Extract EXIF metadata
-    exif = extract_exif(tempfile.path)
-
-    # Update photo record
     photo.update!(
-      thumbnail_key: thumb_key,
-      blur_data_uri: blur_data_uri,
-      width: image.width,
-      height: image.height,
-      file_size_bytes: File.size(tempfile.path),
-      exif_data: exif,
-      status: "ready"
+      ingestion_status: "copied",
+      ingested_at: Time.current,
+      processing_status: "pending",
+      ingestion_error: nil
     )
-
-    # Update counters
-    Ceremony.increment_counter(:photo_count, photo.ceremony_id)
-    Wedding.increment_counter(:total_photos, photo.wedding_id)
-
+    PhotoProcessingJob.perform_later(photo.id)
   rescue => e
-    photo&.update!(status: "failed", status_error: e.message)
-    raise  # re-raise for retry
+    photo&.update!(ingestion_status: "failed", ingestion_error: e.message)
+    raise
   ensure
     tempfile&.close
     tempfile&.unlink
@@ -707,202 +861,164 @@ class PhotoProcessingJob < ApplicationJob
 end
 ```
 
-- [ ] Download original via `Storage::Service.download_to_tempfile` (provider-agnostic)
-- [ ] Generate thumbnail (300px wide, WebP, quality 60) — ~15KB each
-- [ ] Generate blur placeholder (20px wide, base64) — ~200 bytes, stored in DB
-- [ ] Upload thumbnail via `Storage::Service.upload` (provider-agnostic)
-- [ ] Extract EXIF data (camera, lens, date, GPS)
-- [ ] Extract width/height for aspect_ratio
-- [ ] Update photo record: `thumbnail_key`, `blur_data_uri`, dimensions, status → `"ready"`
-- [ ] Increment ceremony `photo_count` and wedding `total_photos`
-- [ ] Handle failures: set status → `"failed"` with error message, retry up to 3 times
-- [ ] Clean up tempfiles in `ensure` block
+- [ ] Stream from source provider to tempfile
+- [ ] Prefer provider-side copy when source/destination compatibility allows it
+- [ ] Upload into gallery-managed storage
+- [ ] Avoid keeping external source URLs as the long-term serving path
+- [ ] Handle retries safely
+- [ ] Preserve original filename, size, and content type
 
-**Processing time per photo: ~1-2 seconds** (only thumbnail + blur, not 9 variants).
-**For 3,000 photos with 3 workers: ~17 minutes.**
-
-**Acceptance:** Upload an image → job processes → thumbnail + blur stored → photo record fully populated with status "ready".
+**Acceptance:** Imported photos move from B2/R2 into gallery-managed storage automatically.
 
 ---
 
-### PHOTO-5: Set up Imgproxy for on-demand image resizing
+### PHOTO-8: Build PhotoProcessingJob (thumbnail + blur only)
+**Priority:** Urgent | **Estimate:** 3 points
+
+Simplified pipeline:
+- original stored in gallery-managed storage
+- thumbnail generated and stored
+- blur placeholder stored inline in DB
+- preview/full generated later via Imgproxy
+
+- [ ] Download original via `Storage::Service.download_to_tempfile`
+- [ ] Generate thumbnail (300px wide, WebP, quality 60)
+- [ ] Generate blur placeholder (20px wide, base64)
+- [ ] Upload thumbnail via `Storage::Service.upload`
+- [ ] Extract EXIF data
+- [ ] Extract width/height for aspect ratio
+- [ ] Update processing state to `processing` then `ready`
+- [ ] Increment ceremony and wedding counters
+- [ ] Set `processing_status = failed` with error on processing failure
+
+**Acceptance:** Imported or directly uploaded photo becomes fully usable after processing.
+
+---
+
+### PHOTO-9: Set up Imgproxy for on-demand image resizing
 **Priority:** High | **Estimate:** 2 points
 
-Imgproxy generates preview (1200px) and full (2400px) variants on demand from the original. CDN caches the result.
+- [ ] Deploy Imgproxy
+- [ ] Configure it against `STORAGE_PUBLIC_URL`
+- [ ] Add signed URL support
+- [ ] Support AVIF, WebP, JPEG
+- [ ] Put CDN in front for caching
+- [ ] Verify it works for originals stored in gallery-managed storage
 
-- [ ] Deploy Imgproxy on Railway ($5/mo Docker container)
-- [ ] Configure Imgproxy to fetch from `STORAGE_PUBLIC_URL` (works with any provider)
-- [ ] Set `IMGPROXY_KEY` and `IMGPROXY_SALT` for signed URLs (prevent tampering)
-- [ ] Configure AVIF + WebP + JPEG format support
-- [ ] Put Cloudflare CDN in front for caching (30-day cache TTL)
-- [ ] Create `ImgproxyService` in Rails:
-
-```ruby
-class ImgproxyService
-  PRESETS = {
-    preview:      { width: 1200, quality: 75, format: "webp" },
-    full:         { width: 2400, quality: 85, format: "webp" },
-    avif_preview: { width: 1200, quality: 60, format: "avif" },
-    avif_full:    { width: 2400, quality: 70, format: "avif" },
-  }.freeze
-
-  def self.url_for(source_url, width:, quality:, format:)
-    path = "/rs:fit:#{width}/q:#{quality}/#{encode(source_url)}.#{format}"
-    signature = sign(path)
-    "#{ENV['IMGPROXY_URL']}/#{signature}#{path}"
-  end
-end
-```
-
-- [ ] Verify first request generates image, second request serves from CDN cache
-- [ ] Test with originals stored on R2, B2, and MinIO — Imgproxy fetches via `STORAGE_PUBLIC_URL`
-
-**Acceptance:** Imgproxy resizes originals on demand. Changing storage provider only requires updating `STORAGE_PUBLIC_URL`.
+**Acceptance:** Preview/full variants are generated on demand without storing many redundant versions.
 
 ---
 
-### PHOTO-6: Build PhotoUrlBuilder service
+### PHOTO-10: Build PhotoUrlBuilder service
 **Priority:** High | **Estimate:** 1 point
 
-Centralizes URL generation for all photo variants. Used by gallery API endpoints.
+- [ ] Return:
+  - blur
+  - thumbnail
+  - preview
+  - full
+  - avif_preview
+  - avif_full
+  - download
+- [ ] Use gallery-managed storage keys as the source of truth
+- [ ] Never expose raw B2/R2 source keys to gallery clients
 
-```ruby
-class PhotoUrlBuilder
-  def initialize(photo)
-    @photo = photo
-  end
-
-  def urls
-    {
-      blur: @photo.blur_data_uri,
-      thumbnail: Storage::Service.presigned_download_url(key: @photo.thumbnail_key, expires_in: 1.hour.to_i),
-      preview: imgproxy_url(:preview),
-      full: imgproxy_url(:full),
-      avif_preview: imgproxy_url(:avif_preview),
-      avif_full: imgproxy_url(:avif_full),
-      download: Storage::Service.presigned_download_url(key: @photo.original_key, expires_in: 1.hour.to_i, filename: @photo.original_filename)
-    }
-  end
-
-  private
-
-  def imgproxy_url(preset)
-    source = Storage::Service.public_url(key: @photo.original_key)
-    preset_config = ImgproxyService::PRESETS[preset]
-    ImgproxyService.url_for(source, **preset_config)
-  end
-end
-```
-
-- [ ] Thumbnail URL: signed download URL from storage provider
-- [ ] Preview/full URLs: signed Imgproxy URLs (fetches from `STORAGE_PUBLIC_URL`)
-- [ ] Download URL: signed URL to original with `Content-Disposition: attachment`
-- [ ] All URLs are provider-agnostic — switching provider changes nothing in this service
-
-**Acceptance:** Returns all 7 URL variants for any photo. Works regardless of storage provider.
+**Acceptance:** Any ready photo can produce the full display/download URL set.
 
 ---
 
-### PHOTO-7: Build photo listing endpoint (paginated)
+### PHOTO-11: Build studio photo listing endpoint
 **Priority:** Urgent | **Estimate:** 1 point
 
 `GET /api/v1/weddings/:wedding_slug/ceremonies/:ceremony_slug/photos`
 
-Uses cursor-based pagination (not offset) for infinite scroll.
+- [ ] Cursor-based pagination using `sort_order`
+- [ ] Default to `processing_status = 'ready'`
+- [ ] Add optional studio filters for `failed`, `processing`, and `ingestion_status`
+- [ ] Use `PhotoUrlBuilder`
+- [ ] Include width, height, aspect ratio, sort order, cover status
+- [ ] Include ingestion/processing status for studio dashboard views
+- [ ] Do not include gallery-session fields yet
 
-Response per photo:
-```json
-{
-  "id": "uuid",
-  "urls": {
-    "blur": "data:image/webp;base64,...",
-    "thumbnail": "https://signed-url...",
-    "preview": "https://imgproxy-signed...",
-    "full": "https://imgproxy-signed...",
-    "avif_preview": "https://imgproxy-signed...",
-    "avif_full": "https://imgproxy-signed..."
-  },
-  "width": 5472,
-  "height": 3648,
-  "aspect_ratio": 1.500,
-  "sort_order": 1,
-  "is_cover": false,
-  "is_liked": false,
-  "is_shortlisted": false,
-  "comment_count": 0
-}
-```
-
-- [ ] Use `PhotoUrlBuilder` to generate all URL variants
-- [ ] Cursor-based pagination using `sort_order` as cursor
-- [ ] Only return photos with `status = 'ready'`
-- [ ] Include like/shortlist status for current session (gallery endpoints)
-- [ ] Include comment count per photo
-
-**Acceptance:** Returns paginated photos with all URL variants. Works with any storage provider.
+**Acceptance:** Photographer can browse ready photos and also inspect items that are still processing or failed.
 
 ---
 
-### PHOTO-8: Build photo management endpoints
+### PHOTO-12: Build photo management endpoints
 **Priority:** High | **Estimate:** 1 point
 
 **`DELETE /api/v1/photos/:id`**
-- Delete record + enqueue storage cleanup job
+- delete record + enqueue cleanup
 
 **`PATCH /api/v1/photos/:id`**
-- Update `sort_order`, `is_cover`
+- update metadata like `sort_order`
 
 **`PATCH /api/v1/weddings/:wedding_slug/ceremonies/:ceremony_slug/photos/reorder`**
-```json
-{ "order": ["photo-uuid-1", "photo-uuid-3", "photo-uuid-2"] }
-```
+- bulk reorder
 
 **`POST /api/v1/photos/:id/set_cover`**
-- Unset current cover, set this as cover
+- enforce one cover per ceremony
 
-- [ ] On delete: collect `[original_key, thumbnail_key]` and enqueue cleanup
-- [ ] Bulk reorder accepts array of photo UUIDs
-- [ ] Cover photo: only one per ceremony
+- [ ] On delete, collect gallery storage keys only
+- [ ] Reorder accepts array of photo UUIDs
+- [ ] Cover photo is unique per ceremony
 
-**Acceptance:** Delete removes record + enqueues storage cleanup. Reorder persists. Cover toggles correctly.
+**Acceptance:** Photographer can curate imported photos just like directly uploaded ones.
 
 ---
 
-### PHOTO-9: Build storage cleanup job
+### PHOTO-13: Build storage cleanup job
 **Priority:** Medium | **Estimate:** 1 point
 
-`StorageCleanupJob` — runs when photos/ceremonies/weddings are deleted.
+`StorageCleanupJob`
 
-- [ ] Accept list of storage keys to delete
-- [ ] Use `Storage::Service.delete_batch(keys:)` — provider-agnostic batch delete
+- [ ] Accept keys from gallery-managed storage
+- [ ] Use `Storage::Service.delete_batch(keys:)`
+- [ ] Handle missing keys gracefully
 - [ ] Log deletions for audit
-- [ ] Handle missing keys gracefully (already deleted = no error)
+- [ ] Never delete from external source buckets unless explicitly requested by product rules
 
-**Acceptance:** Deleted photos are cleaned from storage within minutes. Works on any provider.
+**Acceptance:** Deleting a photo cleans up gallery-managed storage safely.
 
 ---
 
-### PHOTO-10: Build upload batch tracking
+### PHOTO-14: Build import/upload batch tracking
 **Priority:** Medium | **Estimate:** 1 point
 
 ```ruby
 create_table :upload_batches, id: :uuid do |t|
   t.references :ceremony, type: :uuid, foreign_key: true, null: false
   t.references :studio, type: :uuid, foreign_key: true, null: false
+  t.string :source_type, null: false, default: "import"   # import | direct_upload
   t.integer :total_files, null: false, default: 0
   t.integer :completed_files, null: false, default: 0
   t.integer :failed_files, null: false, default: 0
-  t.string :status, null: false, default: 'in_progress'  # in_progress | completed | partial
+  t.string :status, null: false, default: "in_progress"
   t.timestamps
 end
 ```
 
-- [ ] Create batch on presign request, track progress
-- [ ] Update counters as photos complete/fail processing
-- [ ] Mark batch as `completed` when all photos done
-- [ ] Photographer dashboard shows: "Uploading 342 photos to Haldi... 280/342 complete"
+- [ ] Track both cloud imports and direct uploads
+- [ ] Update counters as photos finish or fail
+- [ ] Mark batch as `completed` or `partial`
+- [ ] Photographer dashboard can show import progress
+- [ ] Track skipped duplicates separately
+- [ ] Track both ingestion failures and processing failures
 
-**Acceptance:** Batch progress trackable. Status updates as photos process.
+**Acceptance:** Large imports from B2/R2 are trackable and support real upload progress UX.
+
+---
+
+### Notes on Product Direction
+- Importing from photographer storage is the main workflow.
+- Direct browser upload stays supported, but it is not the only ingestion path.
+- We should serve client galleries from gallery-managed storage, not directly from photographer buckets.
+- This keeps access control, thumbnails, expiry, downloads, and future migration under our control.
+- Source credentials should be owned per studio through saved connections.
+- Global env credentials should be used only for local development, initial bootstrap, or admin-only operational tools.
+- Import requests must trust provider-side metadata, not raw client-submitted metadata.
+- Retries should be explicit (`retry_import`, `retry_processing`) rather than overloading confirmation semantics.
+- Duplicate imports should be prevented by canonical source identity, not by filename alone.
 
 ---
 

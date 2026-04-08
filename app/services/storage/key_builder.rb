@@ -5,7 +5,7 @@ module Storage
     end
 
     def self.thumbnail(studio_id:, wedding_id:, photo_id:)
-      "studios/#{studio_id}/weddings/#{wedding_id}/photos/#{photo_id}/thumbnail.jpg"
+      "studios/#{studio_id}/weddings/#{wedding_id}/photos/#{photo_id}/thumbnail.webp"
     end
 
     def self.hero(studio_id:, wedding_id:)
