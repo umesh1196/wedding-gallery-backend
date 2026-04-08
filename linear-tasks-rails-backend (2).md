@@ -1024,7 +1024,35 @@ end
 
 ## Epic 7: Gallery Public Access (Client-Facing)
 
-### GALLERY-1: Build gallery password verification endpoint
+### GALLERY-1: Create gallery_sessions table
+**Priority:** Urgent | **Estimate:** 1 point
+
+```ruby
+create_table :gallery_sessions, id: :uuid do |t|
+  t.references :wedding, type: :uuid, foreign_key: true, null: false
+  t.string :session_token_digest, null: false, index: { unique: true }
+  t.string :visitor_name
+  t.string :role, default: "guest"  # couple | family | guest
+  t.string :last_ip
+  t.string :last_user_agent
+  t.datetime :last_active_at, default: -> { "now()" }, null: false
+  t.datetime :revoked_at
+  t.timestamps
+end
+```
+
+- [ ] Token generated via `SecureRandom.urlsafe_base64(32)`
+- [ ] Store only a SHA256 digest of the session token in DB
+- [ ] Session expires after 24 hours of inactivity
+- [ ] Support explicit invalidation via `revoked_at`
+- [ ] Touch `last_active_at` on each authenticated gallery API call
+- [ ] Optionally record `last_ip` and `last_user_agent` for audit/debugging
+
+**Acceptance:** Sessions create, expire, and revoke correctly without storing raw bearer tokens in plaintext.
+
+---
+
+### GALLERY-2: Build gallery password verification endpoint
 **Priority:** Urgent | **Estimate:** 1 point
 
 `POST /api/v1/g/:studio_slug/:wedding_slug/verify`
@@ -1043,7 +1071,6 @@ end
       "wedding_date": "2026-02-15",
       "hero_image_url": "signed-url",
       "branding": { "logo_url": "...", "color_primary": "#1a1a1a", ... },
-      "ceremonies": [ { "name": "Haldi", "slug": "haldi", "cover_url": "...", "photo_count": 342 } ],
       "allow_download": "shortlist",
       "allow_comments": true
     }
@@ -1054,33 +1081,18 @@ end
 - [ ] Find wedding by studio_slug + wedding_slug combo
 - [ ] Check `is_active` and `expires_at` — return 410 (Gone) if expired
 - [ ] Verify password against `password_hash`
-- [ ] Create `GallerySessions` record with secure random token
-- [ ] Return session token + full gallery metadata in one shot
-- [ ] Include studio branding (colors, fonts, logo) so frontend can theme immediately
+- [ ] Create `gallery_sessions` record and return raw session token once
+- [ ] Include lightweight gallery bootstrap data only:
+  - couple name
+  - wedding date
+  - hero image URL
+  - branding
+  - allow_download
+  - allow_comments
+- [ ] Do not preload ceremony lists, photo counts, likes, shortlist state, or comments here
+- [ ] Add rate limiting/backoff to reduce brute-force attempts per IP and per wedding
 
-**Acceptance:** Correct password returns session + gallery data. Wrong password returns 401. Expired gallery returns 410.
-
----
-
-### GALLERY-2: Create gallery_sessions table
-**Priority:** Urgent | **Estimate:** 0.5 points
-
-```ruby
-create_table :gallery_sessions, id: :uuid do |t|
-  t.references :wedding, type: :uuid, foreign_key: true, null: false
-  t.string :session_token, null: false, index: { unique: true }
-  t.string :visitor_name
-  t.string :role, default: "guest"  # couple | family | guest
-  t.datetime :last_active_at, default: -> { "now()" }
-  t.timestamps
-end
-```
-
-- [ ] Token generated via `SecureRandom.urlsafe_base64(32)`
-- [ ] Session expires after 24 hours of inactivity
-- [ ] Touch `last_active_at` on each API call
-
-**Acceptance:** Sessions create and expire correctly.
+**Acceptance:** Correct password returns a session token plus minimal gallery shell. Wrong password returns 401. Expired gallery returns 410. Repeated bad attempts are throttled.
 
 ---
 
@@ -1091,16 +1103,40 @@ Separate from studio JWT auth — this is for gallery visitors.
 
 - [ ] Create `authenticate_gallery_session!` method
 - [ ] Extract token from `X-Gallery-Token` header
-- [ ] Find session, check not expired, check wedding still active
+- [ ] Digest incoming token before lookup
+- [ ] Find session, check not expired, not revoked, and wedding still active
 - [ ] Set `current_session` and `current_wedding`
 - [ ] Touch `last_active_at`
+- [ ] Ensure URL `studio_slug` and `wedding_slug` match the session's wedding on every request
 - [ ] Return 401 if invalid, 410 if gallery expired
 
-**Acceptance:** Gallery endpoints reject invalid/expired sessions. `current_wedding` available.
+**Acceptance:** Gallery endpoints reject invalid, revoked, cross-gallery, or expired sessions. `current_wedding` is always bound to the authenticated gallery session.
 
 ---
 
-### GALLERY-4: Build public ceremony listing endpoint
+### GALLERY-4: Build public gallery bootstrap endpoint
+**Priority:** Urgent | **Estimate:** 0.5 points
+
+`GET /api/v1/g/:studio_slug/:wedding_slug`
+
+Header: `X-Gallery-Token: <session_token>`
+
+- [ ] Return lightweight gallery metadata for already-authenticated sessions
+- [ ] Include:
+  - couple name
+  - wedding date
+  - hero image URL
+  - branding
+  - allow_download
+  - allow_comments
+- [ ] Keep this endpoint read-only and fast
+- [ ] Do not include ceremony list or photo interaction state here
+
+**Acceptance:** Frontend can refresh its gallery shell without re-running password verification.
+
+---
+
+### GALLERY-5: Build public ceremony listing endpoint
 **Priority:** Urgent | **Estimate:** 0.5 points
 
 `GET /api/v1/g/:studio_slug/:wedding_slug/ceremonies`
@@ -1115,14 +1151,15 @@ Header: `X-Gallery-Token: <session_token>`
 
 ---
 
-### GALLERY-5: Build public photo browsing endpoint
+### GALLERY-6: Build public photo browsing endpoint
 **Priority:** Urgent | **Estimate:** 1 point
 
 `GET /api/v1/g/:studio_slug/:wedding_slug/ceremonies/:ceremony_slug/photos`
 
-- [ ] Paginated (cursor-based for infinite scroll — use `sort_order` as cursor)
+- [ ] Paginated (cursor-based for infinite scroll — use `(sort_order, id)` as a stable cursor)
 - [ ] Return thumbnail + preview signed URLs + blur hash + dimensions
-- [ ] Only `completed` processing status
+- [ ] Only `ready` processing status
+- [ ] Do not include like, shortlist, or comment fields yet
 
 ```json
 {
@@ -1133,10 +1170,7 @@ Header: `X-Gallery-Token: <session_token>`
       "preview_url": "signed...",
       "blur_hash": "base64...",
       "width": 4000,
-      "height": 2667,
-      "is_liked": false,
-      "is_shortlisted": false,
-      "comment_count": 2
+      "height": 2667
     }
   ],
   "meta": { "next_cursor": "abc123", "has_more": true }
@@ -1144,10 +1178,23 @@ Header: `X-Gallery-Token: <session_token>`
 ```
 
 - [ ] Cursor-based pagination (not offset — better for infinite scroll)
-- [ ] Include like/shortlist status for current session
-- [ ] Include comment count per photo
+- [ ] Cursor must remain stable if photographer reorders photos while guests are browsing
+- [ ] Signed URLs should use short expiry windows
+- [ ] Note product decision: already-issued signed URLs may remain valid briefly after gallery expiry until their TTL runs out
 
-**Acceptance:** Infinite-scroll ready endpoint with signed URLs and interaction state.
+**Acceptance:** Infinite-scroll ready endpoint with signed URLs and display metadata only.
+
+---
+
+### Notes on Scope for Epic 7
+- Epic 7 is intentionally read-only for public gallery access.
+- Likes, shortlist state, and comment counts begin in later epics and should not block public browsing.
+- `is_liked` and `is_shortlisted` are added in Epic 8.
+- `comment_count` is added in Epic 10.
+- `verify` creates the session and returns a minimal gallery shell.
+- Ceremony listing and photo browsing stay as separate endpoints so auth remains lightweight.
+- Session authentication must bind the token to the same wedding in the URL, not just any active wedding.
+- Public password verification must be rate-limited from day one.
 
 ---
 

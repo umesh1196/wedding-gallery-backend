@@ -4,6 +4,12 @@ Rails.application.routes.draw do
 
   namespace :api do
     namespace :v1 do
+      post "g/:studio_slug/:wedding_slug/verify", to: "gallery#verify"
+      namespace :g, module: "gallery", path: "g" do
+        get ":studio_slug/:wedding_slug", to: "bootstraps#show"
+        get ":studio_slug/:wedding_slug/ceremonies", to: "ceremonies#index"
+        get ":studio_slug/:wedding_slug/ceremonies/:ceremony_slug/photos", to: "photos#index"
+      end
       post "auth/signup", to: "auth#signup"
       post "auth/login",  to: "auth#login"
       get  "auth/me",     to: "auth#me"

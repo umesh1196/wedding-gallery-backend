@@ -1444,6 +1444,194 @@ paths:
               schema:
                 $ref: "#/components/schemas/DeleteResponse"
 
+  /api/v1/g/{studio_slug}/{wedding_slug}/verify:
+    post:
+      tags:
+        - Gallery
+      summary: Verify a public gallery password
+      operationId: verifyGalleryPassword
+      parameters:
+        - name: studio_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: wedding_slug
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GalleryVerifyRequest"
+            example:
+              password: gallery123
+      responses:
+        "200":
+          description: Gallery password verified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GalleryVerifyResponse"
+        "401":
+          description: Invalid gallery password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Gallery not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: Gallery expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/g/{studio_slug}/{wedding_slug}:
+    get:
+      tags:
+        - Gallery
+      summary: Fetch the public gallery bootstrap for an authenticated session
+      operationId: galleryBootstrap
+      parameters:
+        - name: studio_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: wedding_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/XGalleryToken"
+      responses:
+        "200":
+          description: Public gallery bootstrap
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GalleryBootstrapResponse"
+        "401":
+          description: Invalid session token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: Gallery expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/g/{studio_slug}/{wedding_slug}/ceremonies:
+    get:
+      tags:
+        - Gallery
+      summary: List public gallery ceremonies
+      operationId: galleryCeremonies
+      parameters:
+        - name: studio_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: wedding_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/XGalleryToken"
+      responses:
+        "200":
+          description: Public ceremony list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GalleryCeremonyListResponse"
+        "401":
+          description: Invalid session token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: Gallery expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/g/{studio_slug}/{wedding_slug}/ceremonies/{ceremony_slug}/photos:
+    get:
+      tags:
+        - Gallery
+      summary: Browse public gallery photos
+      operationId: galleryPhotos
+      parameters:
+        - name: studio_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: wedding_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: ceremony_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/XGalleryToken"
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Public photo page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GalleryPhotoListResponse"
+        "401":
+          description: Invalid session token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Ceremony not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: Gallery expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   parameters:
     WeddingSlug:
@@ -1481,6 +1669,13 @@ components:
       schema:
         type: string
         format: uuid
+    XGalleryToken:
+      name: X-Gallery-Token
+      in: header
+      required: true
+      schema:
+        type: string
+      description: Session token returned by the gallery password verification endpoint
 
   securitySchemes:
     bearerAuth:
@@ -2506,6 +2701,206 @@ components:
             - true
         data:
           $ref: "#/components/schemas/Studio"
+
+    GalleryBranding:
+      type: object
+      required:
+        - slug
+        - studio_name
+        - color_primary
+        - color_accent
+        - font_heading
+        - font_body
+        - watermark_opacity
+      properties:
+        slug:
+          type: string
+        studio_name:
+          type: string
+        color_primary:
+          type: string
+        color_accent:
+          type: string
+        font_heading:
+          type: string
+        font_body:
+          type: string
+        logo_url:
+          type: string
+          format: uri
+          nullable: true
+        watermark_url:
+          type: string
+          format: uri
+          nullable: true
+        watermark_opacity:
+          type: string
+
+    GalleryBootstrap:
+      type: object
+      required:
+        - couple_name
+        - wedding_date
+        - allow_download
+        - allow_comments
+        - branding
+      properties:
+        couple_name:
+          type: string
+        wedding_date:
+          type: string
+          format: date
+        hero_image_url:
+          type: string
+          format: uri
+          nullable: true
+        allow_download:
+          type: string
+          enum:
+            - none
+            - shortlist
+            - all
+        allow_comments:
+          type: boolean
+        branding:
+          $ref: "#/components/schemas/GalleryBranding"
+
+    GalleryVerifyRequest:
+      type: object
+      required:
+        - password
+      properties:
+        password:
+          type: string
+
+    GalleryVerifyData:
+      type: object
+      required:
+        - session_token
+        - gallery
+      properties:
+        session_token:
+          type: string
+        gallery:
+          $ref: "#/components/schemas/GalleryBootstrap"
+
+    GalleryVerifyResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          $ref: "#/components/schemas/GalleryVerifyData"
+
+    GalleryBootstrapResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          $ref: "#/components/schemas/GalleryBootstrap"
+
+    GalleryCeremony:
+      type: object
+      required:
+        - id
+        - name
+        - slug
+        - sort_order
+        - photo_count
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        sort_order:
+          type: integer
+        photo_count:
+          type: integer
+        cover_image_url:
+          type: string
+          format: uri
+          nullable: true
+
+    GalleryCeremonyListResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/GalleryCeremony"
+
+    GalleryPhoto:
+      type: object
+      required:
+        - id
+        - width
+        - height
+      properties:
+        id:
+          type: string
+          format: uuid
+        thumbnail_url:
+          type: string
+          format: uri
+          nullable: true
+        preview_url:
+          type: string
+          format: uri
+          nullable: true
+        blur_hash:
+          type: string
+          nullable: true
+        width:
+          type: integer
+        height:
+          type: integer
+
+    GalleryPhotoListResponse:
+      type: object
+      required:
+        - success
+        - data
+        - meta
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/GalleryPhoto"
+        meta:
+          type: object
+          required:
+            - has_more
+          properties:
+            next_cursor:
+              type: string
+              nullable: true
+            has_more:
+              type: boolean
 
     ErrorDetail:
       type: object

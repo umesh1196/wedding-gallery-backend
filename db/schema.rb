@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_08_213000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_08_220000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -30,6 +30,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_08_213000) do
     t.index ["wedding_id", "slug"], name: "index_ceremonies_on_wedding_id_and_slug", unique: true
     t.index ["wedding_id", "sort_order"], name: "index_ceremonies_on_wedding_id_and_sort_order"
     t.index ["wedding_id"], name: "index_ceremonies_on_wedding_id"
+  end
+
+  create_table "gallery_sessions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "last_active_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.string "last_ip"
+    t.string "last_user_agent"
+    t.datetime "revoked_at"
+    t.string "role", default: "guest", null: false
+    t.string "session_token_digest", null: false
+    t.datetime "updated_at", null: false
+    t.string "visitor_name"
+    t.uuid "wedding_id", null: false
+    t.index ["last_active_at"], name: "index_gallery_sessions_on_last_active_at"
+    t.index ["session_token_digest"], name: "index_gallery_sessions_on_session_token_digest", unique: true
+    t.index ["wedding_id"], name: "index_gallery_sessions_on_wedding_id"
   end
 
   create_table "photos", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -153,6 +169,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_08_213000) do
   end
 
   add_foreign_key "ceremonies", "weddings"
+  add_foreign_key "gallery_sessions", "weddings"
   add_foreign_key "photos", "ceremonies"
   add_foreign_key "photos", "studio_storage_connections"
   add_foreign_key "photos", "upload_batches"
