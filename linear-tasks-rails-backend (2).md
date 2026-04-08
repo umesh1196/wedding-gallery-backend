@@ -1786,6 +1786,143 @@ add_index :album_share_links, :token_digest, unique: true
 
 ---
 
+## Epic 15: AI Face Recognition & Guest Photo Discovery
+
+### FACE-1: Add people and face-indexing schema
+**Priority:** High | **Estimate:** 2 points
+
+- [ ] Add `people` table scoped to `wedding`
+- [ ] Add `person_reference_faces` table for studio-provided VIP/reference images
+- [ ] Add `photo_faces` table for detected faces inside gallery photos
+- [ ] Store bounding box, quality score, embedding dimensions, and nullable `person_id`
+- [ ] Add `album`-style join constraints so each `photo_face` always belongs to a photo in the same wedding/ceremony
+- [ ] Use `pgvector` for embeddings instead of storing arrays/JSON blobs
+- [ ] Add DB indexes for `wedding_id`, `photo_id`, `person_id`, and vector search
+
+**Acceptance:** A photo can store multiple detected faces, and each face record can be queried independently for similarity search.
+
+---
+
+### FACE-2: Create studio VIP/reference management APIs
+**Priority:** High | **Estimate:** 2 points
+
+**`POST /api/v1/weddings/:wedding_slug/people`**
+**`GET /api/v1/weddings/:wedding_slug/people`**
+**`GET /api/v1/weddings/:wedding_slug/people/:id`**
+**`PATCH /api/v1/weddings/:wedding_slug/people/:id`**
+**`DELETE /api/v1/weddings/:wedding_slug/people/:id`**
+
+- [ ] Allow studio to create named people like bride, groom, parents, siblings
+- [ ] Keep `person_type` explicit, for example `vip` and `guest_named`
+- [ ] Do not store raw uploaded reference images in the database
+- [ ] Return reference-face count and latest indexing status in API responses
+
+**Acceptance:** Studio can manage the list of important people for a wedding.
+
+---
+
+### FACE-3: Add studio reference-face upload and indexing
+**Priority:** High | **Estimate:** 3 points
+
+**`POST /api/v1/weddings/:wedding_slug/people/:id/reference_faces`**
+
+- [ ] Accept 1 or more reference images for the same person
+- [ ] Persist uploaded source image to gallery-managed storage
+- [ ] Queue async face detection + embedding extraction
+- [ ] Require exactly one high-quality face per reference image
+- [ ] Store failed indexing reason when no face or multiple faces are detected
+- [ ] Build a canonical person embedding from multiple reference embeddings, for example centroid/average
+- [ ] Keep the face engine behind a service boundary; do not call Python/ONNX logic directly from controllers
+
+**Acceptance:** Studio uploads 3-4 reference photos for a person and the system indexes them asynchronously.
+
+---
+
+### FACE-4: Add async photo-face extraction on gallery photo ingestion
+**Priority:** High | **Estimate:** 3 points
+
+- [ ] Trigger face detection/indexing after a photo reaches `ready`
+- [ ] Detect multiple faces per photo and store one `photo_face` row per face
+- [ ] Save bounding boxes and quality metadata
+- [ ] Attempt VIP matching against indexed people within the same wedding
+- [ ] Store match confidence and only auto-assign `person_id` above a configurable threshold
+- [ ] Keep extraction and matching idempotent so photo reprocessing does not create duplicate face rows
+
+**Acceptance:** A processed wedding photo with multiple people results in multiple searchable face records.
+
+---
+
+### FACE-5: Add guest selfie search flow
+**Priority:** High | **Estimate:** 3 points
+
+**`POST /api/v1/g/:studio_slug/:wedding_slug/face_searches`**
+**`GET /api/v1/g/:studio_slug/:wedding_slug/face_searches/:id`**
+
+- [ ] Allow a gallery visitor to upload a selfie after wedding verification
+- [ ] Queue async detection + embedding extraction for the selfie
+- [ ] Reject selfies with zero or multiple detectable faces
+- [ ] Search nearest `photo_faces` only within the same wedding
+- [ ] Return only high-confidence matches above threshold; do not always return the nearest face
+- [ ] Store search job status and final matched `photo_ids`
+- [ ] Delete or expire uploaded selfie source aggressively after matching
+
+**Acceptance:** A guest uploads one selfie and receives only relevant matching wedding photos.
+
+---
+
+### FACE-6: Add VIP/person photo discovery endpoints
+**Priority:** Medium | **Estimate:** 2 points
+
+**`GET /api/v1/weddings/:wedding_slug/people/:id/photos`**
+
+- [ ] Return photos matched to a named person
+- [ ] Support filters by ceremony and confidence threshold
+- [ ] Include the best face match score per photo
+- [ ] Keep this studio-only for the first pass
+
+**Acceptance:** Studio can view all photos where the system matched a specific important person.
+
+---
+
+### FACE-7: Introduce external face-recognition service boundary
+**Priority:** High | **Estimate:** 2 points
+
+- [ ] Create a dedicated face-recognition client/service in Rails
+- [ ] Keep the implementation provider-agnostic; do not bake `InsightFace` calls through the app
+- [ ] First pass can use a Python worker/service behind HTTP or job queue handoff
+- [ ] Define response contract: detected faces, embeddings, bounding boxes, quality score
+- [ ] Add retry/error handling when the face service is unavailable
+- [ ] Document that model/library licensing must be validated before production use
+
+**Acceptance:** Rails can request face detection/embedding extraction without being coupled to a specific ML runtime.
+
+---
+
+### FACE-8: Add privacy, retention, and ops safeguards
+**Priority:** High | **Estimate:** 2 points
+
+- [ ] Treat embeddings and selfies as sensitive biometric data
+- [ ] Do not expose raw embeddings or internal face IDs in public APIs
+- [ ] Add short retention/cleanup for uploaded guest selfies
+- [ ] Add admin delete path for `people`, reference faces, and associated embeddings
+- [ ] Add audit-friendly status/error fields for indexing and selfie searches
+- [ ] Keep all face matching strictly wedding-scoped
+
+**Acceptance:** Biometric data is retained minimally and never leaked through client-facing responses.
+
+---
+
+### Notes on Scope for Epic 15
+- Do not store one embedding per photo as the primary model; store one embedding per detected face.
+- One photo can contain many faces, and one person can have many reference faces.
+- `photo_faces` are the similarity-search target; `photos` remain the display object returned to clients.
+- Use cosine similarity with thresholding; nearest-neighbor alone is not sufficient.
+- Keep this feature async end-to-end for both studio indexing and guest selfie search.
+- Preserve a clean boundary between Rails and the ML runtime so the provider can change later.
+- `InsightFace` is technically viable, but model/library licensing must be cleared before production adoption.
+
+---
+
 ## Summary: Sprint Plan
 
 | Sprint | Epics | Duration |
@@ -1798,9 +1935,10 @@ add_index :album_share_links, :token_digest, unique: true
 | **Sprint 6** | Epic 9 (Downloads) + Epic 10 (Comments) | Week 6 |
 | **Sprint 7** | Epic 11 (Expiry) + Epic 12 (Share Links) | Week 7 |
 | **Sprint 8** | Epic 13 (Albums) + Epic 14 (Deploy) | Week 8 |
-| **Sprint 9** | Polish + Bug Fixes | Week 9 |
+| **Sprint 9** | Epic 15 (AI Face Recognition) | Week 9 |
+| **Sprint 10** | Polish + Bug Fixes | Week 10 |
 
-**Total: ~51 tasks · ~59 story points · 9 weeks**
+**Total: ~59 tasks · ~78 story points · 10 weeks**
 
 ---
 
