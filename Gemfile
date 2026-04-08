@@ -12,7 +12,7 @@ gem "bcrypt", "~> 3.1.7"
 gem "blueprinter", "~> 1.0"
 
 # Pagination
-gem "pagy", "~> 7.0"
+gem "pagy", "~> 43.4"
 
 # Environment variables
 gem "dotenv-rails"
