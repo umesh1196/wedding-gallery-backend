@@ -12,6 +12,11 @@ Rails.application.routes.draw do
       post "studio/watermark", to: "studios#upload_watermark"
       resources :weddings, param: :slug, except: [ :new, :edit ] do
         post :hero, on: :member, action: :upload_hero
+        resources :ceremonies, except: [ :new, :edit ], controller: "ceremonies", param: :slug do
+          post :cover, on: :member, action: :upload_cover
+          patch :reorder, on: :collection
+          post :seed, on: :collection
+        end
       end
     end
   end

@@ -17,7 +17,7 @@ class WeddingBlueprint < Blueprinter::Base
     wedding.ceremony_count
   end
 
-  field :ceremonies do |_wedding|
-    []
+  field :ceremonies do |wedding|
+    CeremonyBlueprint.render_as_hash(wedding.ceremonies.order(:sort_order))
   end
 end

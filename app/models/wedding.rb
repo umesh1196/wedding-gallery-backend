@@ -31,8 +31,6 @@ class Wedding < ApplicationRecord
   end
 
   def ceremony_count
-    return 0 unless Object.const_defined?(:Ceremony)
-
     ceremonies.size
   end
 

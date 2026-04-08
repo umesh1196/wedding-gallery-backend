@@ -12,6 +12,8 @@ tags:
   - name: Health
   - name: Auth
   - name: Studio
+  - name: Weddings
+  - name: Ceremonies
 paths:
   /health:
     get:
@@ -396,7 +398,714 @@ paths:
                   message: File size must be less than 2MB
                   code: invalid_upload
 
+  /api/v1/weddings:
+    get:
+      tags:
+        - Weddings
+      summary: List weddings for the current studio
+      operationId: listWeddings
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current studio weddings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeddingListResponse"
+              example:
+                success: true
+                data:
+                  - id: 7198a507-2045-458f-a306-0bf84ee0d051
+                    couple_name: Priya & Arjun Updated
+                    wedding_date: "2026-02-15"
+                    slug: priya-arjun-updated
+                    hero_image_key: studios/a36a59f5-4ba2-4863-b8fd-4ab139e4e7f3/weddings/7198a507-2045-458f-a306-0bf84ee0d051/hero.jpg
+                    hero_image_url: https://cdn.example.com/hero.jpg
+                    is_active: false
+                    expires_at: "2026-12-31T00:00:00.000Z"
+                    allow_download: all
+                    allow_comments: true
+                    total_photos: 0
+                    total_videos: 0
+                    metadata:
+                      location: Mumbai
+                    expired: true
+                    ceremony_count: 0
+                    ceremonies: []
+                meta:
+                  count: 1
+                  page: 1
+                  pages: 1
+                  total_count: 1
+        "401":
+          description: Missing, invalid, or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                error:
+                  message: Unauthorized
+                  code: unauthorized
+    post:
+      tags:
+        - Weddings
+      summary: Create a wedding for the current studio
+      operationId: createWedding
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - wedding
+              properties:
+                wedding:
+                  $ref: "#/components/schemas/WeddingCreateRequest"
+            example:
+              wedding:
+                couple_name: Priya & Arjun
+                wedding_date: "2026-02-15"
+                password: priya2026
+                expires_at: "2026-03-17T00:00:00Z"
+                allow_download: shortlist
+                metadata:
+                  location: Pune
+      responses:
+        "201":
+          description: Wedding created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeddingResponse"
+              example:
+                success: true
+                data:
+                  id: 7198a507-2045-458f-a306-0bf84ee0d051
+                  couple_name: Priya & Arjun
+                  wedding_date: "2026-02-15"
+                  slug: priya-arjun
+                  hero_image_key: null
+                  hero_image_url: null
+                  is_active: true
+                  expires_at: "2026-03-17T00:00:00.000Z"
+                  allow_download: shortlist
+                  allow_comments: true
+                  total_photos: 0
+                  total_videos: 0
+                  metadata:
+                    location: Pune
+                  expired: true
+                  ceremony_count: 0
+                  ceremonies: []
+        "401":
+          description: Missing, invalid, or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                error:
+                  message: Unauthorized
+                  code: unauthorized
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                error:
+                  message: Couple name can't be blank
+                  code: validation_error
+
+  /api/v1/weddings/{slug}:
+    get:
+      tags:
+        - Weddings
+      summary: Fetch a wedding by slug
+      operationId: getWedding
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/WeddingSlug"
+      responses:
+        "200":
+          description: Wedding found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeddingResponse"
+        "401":
+          description: Missing, invalid, or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Wedding not found for current studio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                error:
+                  message: Couldn't find Wedding with [WHERE "weddings"."studio_id" = $1 AND "weddings"."slug" = $2]
+                  code: not_found
+    patch:
+      tags:
+        - Weddings
+      summary: Update a wedding by slug
+      operationId: updateWedding
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/WeddingSlug"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - wedding
+              properties:
+                wedding:
+                  $ref: "#/components/schemas/WeddingUpdateRequest"
+            example:
+              wedding:
+                couple_name: Priya & Arjun Updated
+                password: updatedpass123
+                allow_download: all
+                expires_at: "2026-12-31T00:00:00Z"
+                metadata:
+                  location: Mumbai
+      responses:
+        "200":
+          description: Wedding updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeddingResponse"
+        "401":
+          description: Missing, invalid, or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Wedding not found for current studio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      tags:
+        - Weddings
+      summary: Soft delete a wedding by slug
+      operationId: deleteWedding
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/WeddingSlug"
+      responses:
+        "200":
+          description: Wedding soft deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeddingResponse"
+        "401":
+          description: Missing, invalid, or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Wedding not found for current studio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/weddings/{slug}/hero:
+    post:
+      tags:
+        - Weddings
+      summary: Upload a wedding hero image
+      operationId: uploadWeddingHero
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/WeddingSlug"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Hero image uploaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeddingHeroUploadResponse"
+              example:
+                success: true
+                data:
+                  key: studios/a36a59f5-4ba2-4863-b8fd-4ab139e4e7f3/weddings/7198a507-2045-458f-a306-0bf84ee0d051/hero.jpg
+                  url: https://cdn.example.com/hero.jpg
+                  blur_data_url: data:image/jpeg;base64,abc123
+        "401":
+          description: Missing, invalid, or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Wedding not found for current studio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Invalid upload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/weddings/{wedding_slug}/ceremonies:
+    get:
+      tags:
+        - Ceremonies
+      summary: List ceremonies for a wedding
+      operationId: listCeremonies
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/WeddingSlugNested"
+      responses:
+        "200":
+          description: Wedding ceremonies ordered by sort order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CeremonyListResponse"
+              example:
+                success: true
+                data:
+                  - id: 4d668e89-335e-4322-aa5a-73eaeb885493
+                    name: Mehendi
+                    slug: mehendi
+                    cover_image_key: null
+                    cover_image_url: null
+                    description: null
+                    sort_order: 0
+                    photo_count: 0
+                    video_count: 0
+                  - id: 4d52c600-5eb3-4fb9-85c7-f8f0e8142d98
+                    name: Reception
+                    slug: reception
+                    cover_image_key: null
+                    cover_image_url: null
+                    description: Evening celebration
+                    sort_order: 1
+                    photo_count: 0
+                    video_count: 0
+        "401":
+          description: Missing, invalid, or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Wedding not found for current studio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      tags:
+        - Ceremonies
+      summary: Create a ceremony for a wedding
+      operationId: createCeremony
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/WeddingSlugNested"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ceremony
+              properties:
+                ceremony:
+                  $ref: "#/components/schemas/CeremonyCreateRequest"
+            example:
+              ceremony:
+                name: Haldi Ceremony
+                description: The turmeric ceremony
+                sort_order: 2
+      responses:
+        "201":
+          description: Ceremony created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CeremonyResponse"
+              example:
+                success: true
+                data:
+                  id: de13af61-d4d7-4e22-99fc-85d870be69a1
+                  name: Haldi Ceremony
+                  slug: haldi-ceremony
+                  cover_image_key: null
+                  cover_image_url: null
+                  description: The turmeric ceremony
+                  sort_order: 2
+                  photo_count: 0
+                  video_count: 0
+        "401":
+          description: Missing, invalid, or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Wedding not found for current studio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/weddings/{wedding_slug}/ceremonies/{slug}:
+    get:
+      tags:
+        - Ceremonies
+      summary: Fetch a ceremony by slug
+      operationId: getCeremony
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/WeddingSlugNested"
+        - $ref: "#/components/parameters/CeremonySlug"
+      responses:
+        "200":
+          description: Ceremony found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CeremonyResponse"
+        "401":
+          description: Missing, invalid, or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Ceremony not found for current studio wedding
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      tags:
+        - Ceremonies
+      summary: Update a ceremony by slug
+      operationId: updateCeremony
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/WeddingSlugNested"
+        - $ref: "#/components/parameters/CeremonySlug"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ceremony
+              properties:
+                ceremony:
+                  $ref: "#/components/schemas/CeremonyUpdateRequest"
+            example:
+              ceremony:
+                name: Haldi Updated
+                sort_order: 5
+      responses:
+        "200":
+          description: Ceremony updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CeremonyResponse"
+        "401":
+          description: Missing, invalid, or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Ceremony not found for current studio wedding
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      tags:
+        - Ceremonies
+      summary: Delete a ceremony by slug
+      operationId: deleteCeremony
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/WeddingSlugNested"
+        - $ref: "#/components/parameters/CeremonySlug"
+      responses:
+        "200":
+          description: Ceremony deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CeremonyDeleteResponse"
+              example:
+                success: true
+                data:
+                  id: de13af61-d4d7-4e22-99fc-85d870be69a1
+                  deleted: true
+        "401":
+          description: Missing, invalid, or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Ceremony not found for current studio wedding
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/weddings/{wedding_slug}/ceremonies/{slug}/cover:
+    post:
+      tags:
+        - Ceremonies
+      summary: Upload a ceremony cover image
+      operationId: uploadCeremonyCover
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/WeddingSlugNested"
+        - $ref: "#/components/parameters/CeremonySlug"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Ceremony cover uploaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadAssetResponse"
+              example:
+                success: true
+                data:
+                  key: studios/0ea85f8d-f4e3-4ecc-9f94-dc2cf2daec2c/weddings/4dd4aec6-0524-49ae-9bdc-1df68a3fd857/ceremonies/4d668e89-335e-4322-aa5a-73eaeb885493/cover.jpg
+                  url: https://cdn.example.com/cover.jpg
+        "401":
+          description: Missing, invalid, or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Ceremony not found for current studio wedding
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Invalid upload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/weddings/{wedding_slug}/ceremonies/reorder:
+    patch:
+      tags:
+        - Ceremonies
+      summary: Reorder ceremonies by id
+      operationId: reorderCeremonies
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/WeddingSlugNested"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CeremonyReorderRequest"
+            example:
+              order:
+                - 4d668e89-335e-4322-aa5a-73eaeb885493
+                - 4d52c600-5eb3-4fb9-85c7-f8f0e8142d98
+      responses:
+        "200":
+          description: Ceremonies reordered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CeremonyListResponse"
+        "401":
+          description: Missing, invalid, or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Wedding or ceremony ids not found for current studio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/weddings/{wedding_slug}/ceremonies/seed:
+    post:
+      tags:
+        - Ceremonies
+      summary: Seed ceremonies from a template
+      operationId: seedCeremonies
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/WeddingSlugNested"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CeremonySeedRequest"
+            example:
+              template: indian_wedding
+      responses:
+        "201":
+          description: Ceremony template seeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CeremonySeedResponse"
+        "200":
+          description: Existing ceremonies returned without reseeding
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CeremonySeedResponse"
+              example:
+                success: true
+                data:
+                  - id: 4d668e89-335e-4322-aa5a-73eaeb885493
+                    name: Mehendi
+                    slug: mehendi
+                    cover_image_key: null
+                    cover_image_url: null
+                    description: null
+                    sort_order: 0
+                    photo_count: 0
+                    video_count: 0
+                meta:
+                  seeded: false
+        "401":
+          description: Missing, invalid, or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Wedding not found for current studio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Unknown template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
+  parameters:
+    WeddingSlug:
+      name: slug
+      in: path
+      required: true
+      schema:
+        type: string
+      example: priya-arjun
+    WeddingSlugNested:
+      name: wedding_slug
+      in: path
+      required: true
+      schema:
+        type: string
+      example: aditi-karan
+    CeremonySlug:
+      name: slug
+      in: path
+      required: true
+      schema:
+        type: string
+      example: mehendi
+
   securitySchemes:
     bearerAuth:
       type: http
@@ -547,6 +1256,369 @@ components:
           type: number
           minimum: 0
           maximum: 1
+
+    Wedding:
+      type: object
+      required:
+        - id
+        - couple_name
+        - slug
+        - expires_at
+        - allow_download
+        - allow_comments
+        - is_active
+        - total_photos
+        - total_videos
+        - metadata
+        - expired
+        - ceremony_count
+        - ceremonies
+      properties:
+        id:
+          type: string
+          format: uuid
+        couple_name:
+          type: string
+          example: Priya & Arjun
+        wedding_date:
+          type: string
+          format: date
+          nullable: true
+        slug:
+          type: string
+          example: priya-arjun
+        hero_image_key:
+          type: string
+          nullable: true
+        hero_image_url:
+          type: string
+          format: uri
+          nullable: true
+        is_active:
+          type: boolean
+        expires_at:
+          type: string
+          format: date-time
+        allow_download:
+          type: string
+          enum:
+            - none
+            - shortlist
+            - all
+        allow_comments:
+          type: boolean
+        total_photos:
+          type: integer
+        total_videos:
+          type: integer
+        metadata:
+          type: object
+          additionalProperties: true
+        expired:
+          type: boolean
+        ceremony_count:
+          type: integer
+        ceremonies:
+          type: array
+          items:
+            $ref: "#/components/schemas/Ceremony"
+
+    Ceremony:
+      type: object
+      required:
+        - id
+        - name
+        - slug
+        - sort_order
+        - photo_count
+        - video_count
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        cover_image_key:
+          type: string
+          nullable: true
+        cover_image_url:
+          type: string
+          format: uri
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        sort_order:
+          type: integer
+        photo_count:
+          type: integer
+        video_count:
+          type: integer
+
+    CeremonyCreateRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        cover_image_url:
+          type: string
+          format: uri
+        description:
+          type: string
+        sort_order:
+          type: integer
+
+    CeremonyUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        cover_image_url:
+          type: string
+          format: uri
+        description:
+          type: string
+        sort_order:
+          type: integer
+
+    CeremonyResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          $ref: "#/components/schemas/Ceremony"
+
+    CeremonyListResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Ceremony"
+
+    CeremonyDeleteData:
+      type: object
+      required:
+        - id
+        - deleted
+      properties:
+        id:
+          type: string
+          format: uuid
+        deleted:
+          type: boolean
+          enum:
+            - true
+
+    CeremonyDeleteResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          $ref: "#/components/schemas/CeremonyDeleteData"
+
+    CeremonyReorderRequest:
+      type: object
+      required:
+        - order
+      properties:
+        order:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    CeremonySeedRequest:
+      type: object
+      required:
+        - template
+      properties:
+        template:
+          type: string
+          enum:
+            - indian_wedding
+            - minimal
+
+    CeremonySeedResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Ceremony"
+        meta:
+          type: object
+          properties:
+            seeded:
+              type: boolean
+
+    WeddingCreateRequest:
+      type: object
+      required:
+        - couple_name
+        - password
+        - expires_at
+      properties:
+        couple_name:
+          type: string
+        wedding_date:
+          type: string
+          format: date
+        slug:
+          type: string
+        password:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        allow_download:
+          type: string
+          enum:
+            - none
+            - shortlist
+            - all
+        allow_comments:
+          type: boolean
+        hero_image_url:
+          type: string
+          format: uri
+        metadata:
+          type: object
+          additionalProperties: true
+
+    WeddingUpdateRequest:
+      type: object
+      properties:
+        couple_name:
+          type: string
+        wedding_date:
+          type: string
+          format: date
+        slug:
+          type: string
+        password:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        allow_download:
+          type: string
+          enum:
+            - none
+            - shortlist
+            - all
+        allow_comments:
+          type: boolean
+        hero_image_url:
+          type: string
+          format: uri
+        is_active:
+          type: boolean
+        metadata:
+          type: object
+          additionalProperties: true
+
+    WeddingResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          $ref: "#/components/schemas/Wedding"
+
+    WeddingListResponse:
+      type: object
+      required:
+        - success
+        - data
+        - meta
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Wedding"
+        meta:
+          type: object
+          properties:
+            count:
+              type: integer
+            page:
+              type: integer
+            pages:
+              type: integer
+            total_count:
+              type: integer
+
+    WeddingHeroUploadData:
+      type: object
+      required:
+        - key
+        - url
+        - blur_data_url
+      properties:
+        key:
+          type: string
+        url:
+          type: string
+          format: uri
+        blur_data_url:
+          type: string
+
+    WeddingHeroUploadResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          $ref: "#/components/schemas/WeddingHeroUploadData"
 
     AuthSuccessData:
       type: object

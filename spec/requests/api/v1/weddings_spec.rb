@@ -63,6 +63,16 @@ RSpec.describe "Api::V1::Weddings", type: :request do
       expect(response.parsed_body.dig("data", "slug")).to eq("priya-arjun")
     end
 
+    it "includes ceremonies in the detail response" do
+      wedding = create(:wedding, studio: studio, slug: "priya-arjun")
+      create(:ceremony, wedding: wedding, name: "Haldi Ceremony")
+
+      get "/api/v1/weddings/#{wedding.slug}", headers: headers, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body.dig("data", "ceremonies").first["slug"]).to eq("haldi-ceremony")
+    end
+
     it "returns 404 for another studio wedding" do
       wedding = create(:wedding, studio: other_studio, slug: "hidden-wedding")
       get "/api/v1/weddings/#{wedding.slug}", headers: headers, as: :json

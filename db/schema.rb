@@ -10,10 +10,27 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_08_184000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_08_193000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
+
+  create_table "ceremonies", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "cover_image_key"
+    t.string "cover_image_url"
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "name", null: false
+    t.integer "photo_count", default: 0, null: false
+    t.string "slug", null: false
+    t.integer "sort_order", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.integer "video_count", default: 0, null: false
+    t.uuid "wedding_id", null: false
+    t.index ["wedding_id", "slug"], name: "index_ceremonies_on_wedding_id_and_slug", unique: true
+    t.index ["wedding_id", "sort_order"], name: "index_ceremonies_on_wedding_id_and_sort_order"
+    t.index ["wedding_id"], name: "index_ceremonies_on_wedding_id"
+  end
 
   create_table "studios", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "color_accent", default: "#c9a96e", null: false
@@ -59,5 +76,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_08_184000) do
     t.index ["studio_id"], name: "index_weddings_on_studio_id"
   end
 
+  add_foreign_key "ceremonies", "weddings"
   add_foreign_key "weddings", "studios"
 end
