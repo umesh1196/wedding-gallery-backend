@@ -32,8 +32,8 @@ RSpec.describe "Api::V1::StorageConnections", type: :request do
                bucket: "photographer-archive",
                region: "auto",
                endpoint: "https://example.r2.cloudflarestorage.com",
-               access_key_ciphertext: "key",
-               secret_key_ciphertext: "secret",
+               access_key: "key",
+               secret_key: "secret",
                base_prefix: "weddings/",
                is_default: true
              }
@@ -44,6 +44,25 @@ RSpec.describe "Api::V1::StorageConnections", type: :request do
       expect(response).to have_http_status(:created)
       expect(response.parsed_body.dig("data", "label")).to eq("Main R2")
       expect(studio.studio_storage_connections.count).to eq(1)
+      expect(studio.studio_storage_connections.last.access_key).to eq("key")
+    end
+
+    it "still accepts legacy ciphertext parameter names for backwards compatibility" do
+      post "/api/v1/storage_connections",
+           params: {
+             storage_connection: {
+               label: "Legacy Import",
+               provider: "cloudflare_r2",
+               bucket: "photographer-archive",
+               access_key_ciphertext: "legacy-key",
+               secret_key_ciphertext: "legacy-secret"
+             }
+           },
+           headers: headers,
+           as: :json
+
+      expect(response).to have_http_status(:created)
+      expect(studio.studio_storage_connections.last.access_key).to eq("legacy-key")
     end
   end
 

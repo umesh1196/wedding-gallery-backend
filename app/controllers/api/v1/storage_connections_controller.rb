@@ -30,10 +30,20 @@ module Api
       end
 
       def storage_connection_params
-        params.require(:storage_connection).permit(
+        permitted = params.require(:storage_connection).permit(
           :label, :provider, :account_id, :bucket, :region, :endpoint,
-          :access_key_ciphertext, :secret_key_ciphertext, :base_prefix, :is_default, :active
-        )
+          :access_key, :secret_key, :access_key_ciphertext, :secret_key_ciphertext,
+          :base_prefix, :is_default, :active
+        ).to_h
+
+        if permitted.key?("access_key_ciphertext") && !permitted.key?("access_key")
+          permitted["access_key"] = permitted.delete("access_key_ciphertext")
+        end
+
+        if permitted.key?("secret_key_ciphertext") && !permitted.key?("secret_key")
+          permitted["secret_key"] = permitted.delete("secret_key_ciphertext")
+        end
+        permitted
       end
     end
   end

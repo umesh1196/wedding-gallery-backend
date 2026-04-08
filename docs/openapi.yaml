@@ -1328,6 +1328,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PhotoPresignResponse"
+        "400":
+          description: Invalid upload metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/v1/weddings/{wedding_slug}/ceremonies/{ceremony_slug}/photos/reorder:
     patch:
@@ -1490,6 +1496,12 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "410":
           description: Gallery expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many password verification attempts
           content:
             application/json:
               schema:
@@ -2358,8 +2370,8 @@ components:
         - label
         - provider
         - bucket
-        - access_key_ciphertext
-        - secret_key_ciphertext
+        - access_key
+        - secret_key
       properties:
         label:
           type: string
@@ -2376,9 +2388,9 @@ components:
           type: string
         endpoint:
           type: string
-        access_key_ciphertext:
+        access_key:
           type: string
-        secret_key_ciphertext:
+        secret_key:
           type: string
         base_prefix:
           type: string
@@ -2400,9 +2412,9 @@ components:
           type: string
         endpoint:
           type: string
-        access_key_ciphertext:
+        access_key:
           type: string
-        secret_key_ciphertext:
+        secret_key:
           type: string
         base_prefix:
           type: string

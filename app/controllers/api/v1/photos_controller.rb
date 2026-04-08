@@ -1,10 +1,6 @@
 module Api
   module V1
     class PhotosController < BaseController
-      MAX_FILES_PER_REQUEST = 50
-      MAX_FILE_SIZE = 30.megabytes
-      ALLOWED_CONTENT_TYPES = %w[image/jpeg image/png image/webp image/heic image/heif].freeze
-
       def index
         photos = ceremony.photos.order(:sort_order)
         photos = if params[:processing_status].present?
@@ -17,149 +13,39 @@ module Api
       end
 
       def discover_import
-        conn = source_connection
-        source = PhotoSources.build(conn)
-        prefix = conn.normalized_prefix(params[:prefix])
-        files = source.list(prefix: prefix)
-
-        render_success(
-          {
-            connection_id: conn.id,
-            provider: conn.provider,
-            bucket: conn.bucket,
-            prefix: prefix,
-            files: files
-          }
-        )
+        render_success(PhotoImports::DiscoverService.new(connection: source_connection, prefix: params[:prefix]).call)
       end
 
       def import
-        conn = source_connection
-        source = PhotoSources.build(conn)
-        queued = []
-        skipped_count = 0
-        files = normalized_files
-        batch = current_studio.upload_batches.create!(
+        result = PhotoImports::CreateService.new(
+          studio: current_studio,
+          wedding: wedding,
           ceremony: ceremony,
-          source_type: "import",
-          total_files: files.size
-        )
+          connection: source_connection,
+          files: normalized_files
+        ).call
 
-        files.each do |file|
-          metadata = source.head(key: file.fetch(:source_key))
-          ext = file_extension_for(metadata[:filename], metadata[:content_type])
-
-          existing = ceremony.photos.find_by(
-            source_provider: conn.provider,
-            source_bucket: conn.bucket,
-            source_key: file.fetch(:source_key),
-            source_etag: metadata[:etag]
-          )
-
-          if existing
-            skipped_count += 1
-            batch.increment!(:skipped_files)
-            batch.refresh_status!
-            next
-          end
-
-          photo = ceremony.photos.create!(
-            id: SecureRandom.uuid,
-            wedding: wedding,
-            studio_storage_connection: conn,
-            upload_batch: batch,
-            original_key: Storage::KeyBuilder.original(
-              studio_id: wedding.studio_id,
-              wedding_id: wedding.id,
-              photo_id: SecureRandom.uuid,
-              ext: ext
-            ),
-            source_provider: conn.provider,
-            source_bucket: conn.bucket,
-            source_key: file.fetch(:source_key),
-            source_etag: metadata[:etag],
-            file_size_bytes: metadata[:byte_size],
-            mime_type: metadata[:content_type],
-            original_filename: metadata[:filename],
-            file_extension: ext,
-            sort_order: next_sort_order,
-            ingestion_status: "queued",
-            processing_status: "pending"
-          )
-
-          # Keep the storage path stable and photo-id based after the record exists.
-          photo.update_column(
-            :original_key,
-            Storage::KeyBuilder.original(
-              studio_id: wedding.studio_id,
-              wedding_id: wedding.id,
-              photo_id: photo.id,
-              ext: ext
-            )
-          )
-
-          JobDispatch.enqueue(PhotoImportJob, photo.id)
-          queued << photo
-        end
-
-        status = queued.any? ? :created : :ok
+        status = result[:photos].any? ? :created : :ok
         render_success(
-          PhotoBlueprint.render_as_hash(queued),
+          PhotoBlueprint.render_as_hash(result[:photos]),
           status: status,
-          meta: { queued_count: queued.size, skipped_count: skipped_count, upload_batch_id: batch.id }
+          meta: {
+            queued_count: result[:queued_count],
+            skipped_count: result[:skipped_count],
+            upload_batch_id: result[:upload_batch_id]
+          }
         )
       end
 
       def presign
-        service = Storage::Service.new
-        files = normalized_files
-        batch = current_studio.upload_batches.create!(
+        result = PhotoUploads::PresignService.new(
+          studio: current_studio,
+          wedding: wedding,
           ceremony: ceremony,
-          source_type: "direct_upload",
-          total_files: files.size
-        )
-        payload = files.map do |file|
-          validate_upload_metadata!(file)
-          ext = file_extension_for(file[:filename], file[:content_type])
-          photo = ceremony.photos.create!(
-            id: SecureRandom.uuid,
-            wedding: wedding,
-            upload_batch: batch,
-            original_key: Storage::KeyBuilder.original(
-              studio_id: wedding.studio_id,
-              wedding_id: wedding.id,
-              photo_id: SecureRandom.uuid,
-              ext: ext
-            ),
-            source_provider: "gallery_storage",
-            file_size_bytes: file[:byte_size],
-            mime_type: file[:content_type],
-            original_filename: file[:filename],
-            file_extension: ext,
-            sort_order: next_sort_order,
-            ingestion_status: "uploading",
-            processing_status: "pending"
-          )
+          files: normalized_files
+        ).call
 
-          photo.update_column(
-            :original_key,
-            Storage::KeyBuilder.original(
-              studio_id: wedding.studio_id,
-              wedding_id: wedding.id,
-              photo_id: photo.id,
-              ext: ext
-            )
-          )
-
-          {
-            photo_id: photo.id,
-            presigned_url: service.presigned_upload_url(key: photo.original_key, content_type: photo.mime_type),
-            object_key: photo.original_key,
-            headers: { "Content-Type" => photo.mime_type }
-          }
-        end
-
-        render_success(payload, status: :created, meta: { upload_batch_id: batch.id })
+        render_success(result[:payload], status: :created, meta: { upload_batch_id: result[:upload_batch_id] })
       end
 
       def confirm
@@ -250,19 +136,11 @@ module Api
       end
 
       def validate_upload_metadata!(file)
-        content_type = file[:content_type].to_s
-        byte_size = file[:byte_size].to_i
-
-        raise ActionController::ParameterMissing, "files" if file[:filename].blank?
-        raise ArgumentError, "Unsupported file type" unless ALLOWED_CONTENT_TYPES.include?(content_type)
-        raise ArgumentError, "File size must be less than 30MB" unless byte_size.positive? && byte_size <= MAX_FILE_SIZE
+        PhotoUploads::FileMetadata.validate!(file)
       end
 
       def file_extension_for(filename, content_type)
-        ext = File.extname(filename.to_s).delete(".").downcase
-        return ext if ext.present?
-
-        Rack::Mime::MIME_TYPES.invert.fetch(content_type.to_s, ".jpg").delete(".")
+        PhotoUploads::FileMetadata.extension_for(filename, content_type)
       end
 
       def next_sort_order
@@ -270,9 +148,7 @@ module Api
       end
 
       def normalized_files
-        Array(params.require(:files)).first(MAX_FILES_PER_REQUEST).map do |file|
-          file.respond_to?(:to_unsafe_h) ? file.to_unsafe_h.with_indifferent_access : file.to_h.with_indifferent_access
-        end
+        PhotoUploads::FileMetadata.normalize(params.require(:files))
       end
     end
   end

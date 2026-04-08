@@ -135,6 +135,21 @@ RSpec.describe "Api::V1::Photos", type: :request do
       expect(created_photo.ingestion_status).to eq("uploading")
       expect(created_photo.source_provider).to eq("gallery_storage")
     end
+
+    it "returns 400 for an unsupported content type" do
+      post "/api/v1/weddings/#{wedding.slug}/ceremonies/#{ceremony.slug}/photos/presign",
+           params: {
+             files: [
+               { filename: "notes.txt", content_type: "text/plain", byte_size: 100 }
+             ]
+           },
+           headers: headers,
+           as: :json
+
+      expect(response).to have_http_status(:bad_request)
+      expect(response.parsed_body.dig("error", "message")).to eq("Unsupported file type")
+      expect(response.parsed_body.dig("error", "code")).to eq("bad_request")
+    end
   end
 
   describe "POST /api/v1/photos/:id/confirm" do

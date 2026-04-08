@@ -18,6 +18,11 @@ RSpec.describe "Api::V1::Gallery", type: :request do
   let!(:haldi) { create(:ceremony, wedding: wedding, name: "Haldi", slug: "haldi", sort_order: 1, photo_count: 2) }
   let!(:reception) { create(:ceremony, wedding: wedding, name: "Reception", slug: "reception", sort_order: 2, photo_count: 1) }
 
+  before do
+    Rails.cache.clear
+    Gallery::VerifyRateLimiter::FALLBACK_CACHE.clear
+  end
+
   describe "POST /api/v1/g/:studio_slug/:wedding_slug/verify" do
     it "creates a gallery session and returns the gallery shell for a valid password" do
       post "/api/v1/g/#{studio.slug}/#{wedding.slug}/verify",
@@ -32,6 +37,43 @@ RSpec.describe "Api::V1::Gallery", type: :request do
     end
 
     it "returns 401 for an invalid password" do
+      post "/api/v1/g/#{studio.slug}/#{wedding.slug}/verify",
+           params: { password: "wrong-pass" },
+           as: :json
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it "rate limits repeated invalid password attempts" do
+      5.times do
+        post "/api/v1/g/#{studio.slug}/#{wedding.slug}/verify",
+             params: { password: "wrong-pass" },
+             as: :json
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+
+      post "/api/v1/g/#{studio.slug}/#{wedding.slug}/verify",
+           params: { password: "wrong-pass" },
+           as: :json
+
+      expect(response).to have_http_status(:too_many_requests)
+      expect(response.parsed_body.dig("error", "code")).to eq("rate_limited")
+    end
+
+    it "resets the verify limiter after a successful password entry" do
+      3.times do
+        post "/api/v1/g/#{studio.slug}/#{wedding.slug}/verify",
+             params: { password: "wrong-pass" },
+             as: :json
+      end
+
+      post "/api/v1/g/#{studio.slug}/#{wedding.slug}/verify",
+           params: { password: "gallerypass123" },
+           as: :json
+
+      expect(response).to have_http_status(:ok)
+
       post "/api/v1/g/#{studio.slug}/#{wedding.slug}/verify",
            params: { password: "wrong-pass" },
            as: :json

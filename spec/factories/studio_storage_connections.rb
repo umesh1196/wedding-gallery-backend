@@ -7,8 +7,8 @@ FactoryBot.define do
     bucket { "photographer-archive" }
     region { "auto" }
     endpoint { "https://example.r2.cloudflarestorage.com" }
-    access_key_ciphertext { "encrypted-access-key" }
-    secret_key_ciphertext { "encrypted-secret-key" }
+    access_key { "encrypted-access-key" }
+    secret_key { "encrypted-secret-key" }
     base_prefix { "weddings/" }
     is_default { false }
     active { true }
