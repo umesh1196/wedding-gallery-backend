@@ -5,7 +5,7 @@ gem "pg", "~> 1.1"
 gem "puma", ">= 5.0"
 
 # Auth
-gem "jwt", "~> 2.7"
+gem "jwt", "~> 3.1"
 gem "bcrypt", "~> 3.1.7"
 
 # Serialization
