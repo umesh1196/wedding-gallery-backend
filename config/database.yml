@@ -1,3 +1,10 @@
+<%
+production_database_url = ENV["DATABASE_URL"].presence
+production_cache_database_url = ENV["CACHE_DATABASE_URL"].presence || production_database_url
+production_queue_database_url = ENV["QUEUE_DATABASE_URL"].presence || production_database_url
+production_cable_database_url = ENV["CABLE_DATABASE_URL"].presence || production_database_url
+%>
+
 default: &default
   adapter: postgresql
   encoding: unicode
@@ -18,16 +25,32 @@ test:
 production:
   primary: &primary_production
     <<: *default
+<% if production_database_url.present? %>
+    url: <%= production_database_url %>
+<% else %>
     database: <%= ENV.fetch("DB_NAME", "wedding_gallery_api_production") %>
+<% end %>
   cache:
     <<: *primary_production
+<% if production_cache_database_url.present? %>
+    url: <%= production_cache_database_url %>
+<% else %>
     database: <%= ENV.fetch("DB_NAME", "wedding_gallery_api_production") %>_cache
+<% end %>
     migrations_paths: db/cache_migrate
   queue:
     <<: *primary_production
+<% if production_queue_database_url.present? %>
+    url: <%= production_queue_database_url %>
+<% else %>
     database: <%= ENV.fetch("DB_NAME", "wedding_gallery_api_production") %>_queue
+<% end %>
     migrations_paths: db/queue_migrate
   cable:
     <<: *primary_production
+<% if production_cable_database_url.present? %>
+    url: <%= production_cable_database_url %>
+<% else %>
     database: <%= ENV.fetch("DB_NAME", "wedding_gallery_api_production") %>_cable
+<% end %>
     migrations_paths: db/cable_migrate

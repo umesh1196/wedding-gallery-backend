@@ -7,10 +7,10 @@ Rails.application.configure do
 
   config.public_file_server.headers = { "cache-control" => "public, max-age=#{1.year.to_i}" }
 
-  # config.assume_ssl = true
-  # config.force_ssl = true
+  config.assume_ssl = ENV["ASSUME_SSL"] == "true"
+  config.force_ssl = ENV["FORCE_SSL"] == "true"
 
-  config.log_tags = [ :request_id ]
+  config.log_tags = [ :request_id, ->(request) { "method=#{request.request_method}" } ]
   config.logger   = ActiveSupport::TaggedLogging.logger(STDOUT)
   config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "info")
 

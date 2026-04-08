@@ -1,0 +1,5 @@
+#!/bin/bash
+set -euo pipefail
+
+./bin/rails db:prepare
+exec ./bin/rails solid_queue:start
