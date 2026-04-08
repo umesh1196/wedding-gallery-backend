@@ -40,24 +40,7 @@ module Api
       end
 
       def gallery_payload(record)
-        {
-          couple_name: record.couple_name,
-          wedding_date: record.wedding_date,
-          hero_image_url: record.hero_asset_url,
-          allow_download: record.allow_download,
-          allow_comments: record.allow_comments,
-          branding: {
-            slug: record.studio.slug,
-            studio_name: record.studio.studio_name,
-            color_primary: record.studio.color_primary,
-            color_accent: record.studio.color_accent,
-            font_heading: record.studio.font_heading,
-            font_body: record.studio.font_body,
-            logo_url: record.studio.logo_asset_url,
-            watermark_url: record.studio.watermark_asset_url,
-            watermark_opacity: record.studio.watermark_opacity
-          }
-        }
+        ::Gallery::PayloadBuilder.new(wedding: record).call
       end
 
       def rate_limited!

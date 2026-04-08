@@ -1474,12 +1474,15 @@ add_column :photos, :comments_count, :integer, default: 0, null: false
 create_table :share_links, id: :uuid do |t|
   t.references :wedding, type: :uuid, foreign_key: true, null: false
   t.references :created_by, type: :uuid, foreign_key: { to_table: :gallery_sessions }
-  t.string :token, null: false, index: { unique: true }
+  t.string :token_digest, null: false
   t.string :permissions, default: "view"  # view | view_like | view_download
   t.string :label  # "For Mom & Dad"
   t.datetime :expires_at
+  t.datetime :revoked_at
   t.timestamps
 end
+
+add_index :share_links, :token_digest, unique: true
 ```
 
 **`POST /api/v1/g/.../share`**
@@ -1489,13 +1492,26 @@ end
 
 **`GET /api/v1/g/shared/:token`** — public, no password needed
 - Returns gallery data (same as GALLERY-1 response)
-- Creates gallery session with limited permissions
+- Creates restricted gallery session with limited permissions
 
+- [ ] Store only token digests, never raw share tokens
 - [ ] Shared links bypass password but respect permission level
-- [ ] Shared link can be scoped to specific ceremonies (optional enhancement)
+- [ ] Redeeming a share link must create a restricted gallery session
+- [ ] Restricted sessions must carry share-link permissions explicitly
+- [ ] Like/download endpoints must honor both:
+  - wedding-level settings
+  - share-link permission level
+- [ ] Shared link can be scoped to specific ceremonies later; defer in first pass
 - [ ] Expiry defaults to wedding expiry
+- [ ] Support revocation via `revoked_at`
 
-**Acceptance:** Family member opens shared link → sees gallery (no password) → limited permissions.
+**Acceptance:** Family member opens shared link → sees gallery (no password) → restricted session is created → permissions are enforced consistently across later endpoints.
+
+**Scope Notes**
+- First pass is whole-gallery only; ceremony-scoped share links are deferred.
+- `view_like` allows likes/shortlists/comments only if the wedding itself allows them.
+- `view_download` still must respect wedding `allow_download`; it does not bypass wedding policy.
+- Share-link sessions should be auditable and revocable just like password-created sessions.
 
 ---
 

@@ -2,20 +2,23 @@
   "info": {
     "_postman_id": "9b7ed61f-c4b4-4c50-90f3-36cab9f324bd",
     "name": "Wedding Gallery Backend",
-    "description": "Postman collection for the Wedding Gallery Rails backend through Epic 8.",
+    "description": "Postman collection for the Wedding Gallery Rails backend through Epic 12.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     { "key": "baseUrl", "value": "http://127.0.0.1:3000" },
     { "key": "jwtToken", "value": "" },
     { "key": "galleryToken", "value": "" },
+    { "key": "shareToken", "value": "" },
     { "key": "studioSlug", "value": "my-studio" },
     { "key": "weddingSlug", "value": "priya-arjun" },
     { "key": "ceremonySlug", "value": "haldi" },
     { "key": "photoId", "value": "" },
     { "key": "connectionId", "value": "" },
     { "key": "uploadBatchId", "value": "" },
-    { "key": "shortlistId", "value": "" }
+    { "key": "shortlistId", "value": "" },
+    { "key": "commentId", "value": "" },
+    { "key": "downloadRequestId", "value": "" }
   ],
   "item": [
     {
@@ -533,9 +536,31 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"password\": \"gallery123\"\n}"
+              "raw": "{\n  \"password\": \"gallery123\",\n  \"visitor_name\": \"Asha\"\n}"
             },
             "url": "{{baseUrl}}/api/v1/g/{{studioSlug}}/{{weddingSlug}}/verify"
+          }
+        },
+        {
+          "name": "POST /api/v1/g/:studio_slug/:wedding_slug/share",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Gallery-Token", "value": "{{galleryToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"For Parents\",\n  \"permissions\": \"view_like\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/g/{{studioSlug}}/{{weddingSlug}}/share"
+          }
+        },
+        {
+          "name": "GET /api/v1/g/shared/:token",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/g/shared/{{shareToken}}"
           }
         },
         {
@@ -574,6 +599,83 @@
                 { "key": "cursor", "value": "", "disabled": true }
               ]
             }
+          }
+        },
+        {
+          "name": "GET /api/v1/g/:studio_slug/:wedding_slug/photos/:photo_id/comments",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Gallery-Token", "value": "{{galleryToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/g/{{studioSlug}}/{{weddingSlug}}/photos/{{photoId}}/comments?limit=20",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "v1", "g", "{{studioSlug}}", "{{weddingSlug}}", "photos", "{{photoId}}", "comments" ],
+              "query": [
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/g/:studio_slug/:wedding_slug/photos/:photo_id/comments",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Gallery-Token", "value": "{{galleryToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comment\": {\n    \"body\": \"Love this frame\"\n  }\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/g/{{studioSlug}}/{{weddingSlug}}/photos/{{photoId}}/comments"
+          }
+        },
+        {
+          "name": "DELETE /api/v1/g/:studio_slug/:wedding_slug/comments/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "X-Gallery-Token", "value": "{{galleryToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/g/{{studioSlug}}/{{weddingSlug}}/comments/{{commentId}}"
+          }
+        },
+        {
+          "name": "GET /api/v1/g/:studio_slug/:wedding_slug/photos/:photo_id/download",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Gallery-Token", "value": "{{galleryToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/g/{{studioSlug}}/{{weddingSlug}}/photos/{{photoId}}/download"
+          }
+        },
+        {
+          "name": "POST /api/v1/g/:studio_slug/:wedding_slug/downloads",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Gallery-Token", "value": "{{galleryToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"shortlist\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/g/{{studioSlug}}/{{weddingSlug}}/downloads"
+          }
+        },
+        {
+          "name": "GET /api/v1/g/:studio_slug/:wedding_slug/downloads/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Gallery-Token", "value": "{{galleryToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/g/{{studioSlug}}/{{weddingSlug}}/downloads/{{downloadRequestId}}"
           }
         },
         {

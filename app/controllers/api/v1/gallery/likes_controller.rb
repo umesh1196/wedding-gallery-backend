@@ -2,6 +2,8 @@ module Api
   module V1
     module Gallery
       class LikesController < BaseController
+        before_action :ensure_likes_allowed!, only: [ :create, :destroy, :index ]
+
         def create
           Like.find_or_create_by!(photo: photo, gallery_session: current_gallery_session)
 

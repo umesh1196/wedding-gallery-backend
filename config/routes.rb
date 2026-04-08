@@ -6,7 +6,9 @@ Rails.application.routes.draw do
     namespace :v1 do
       post "g/:studio_slug/:wedding_slug/verify", to: "gallery#verify"
       namespace :g, module: "gallery", path: "g" do
+        get "shared/:token", to: "shared_links#show"
         get ":studio_slug/:wedding_slug", to: "bootstraps#show"
+        post ":studio_slug/:wedding_slug/share", to: "share_links#create"
         get ":studio_slug/:wedding_slug/ceremonies", to: "ceremonies#index"
         get ":studio_slug/:wedding_slug/ceremonies/:ceremony_slug/photos", to: "photos#index"
         get ":studio_slug/:wedding_slug/photos/:photo_id/comments", to: "comments#index"

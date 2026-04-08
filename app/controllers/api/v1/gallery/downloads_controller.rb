@@ -2,6 +2,8 @@ module Api
   module V1
     module Gallery
       class DownloadsController < BaseController
+        before_action :ensure_downloads_allowed!, only: [ :download_photo, :create, :show ]
+
         def download_photo
           payload = GalleryDownloads::SinglePhotoDownloadService.new(
             photo: photo,

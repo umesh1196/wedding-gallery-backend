@@ -8,5 +8,7 @@ FactoryBot.define do
     last_user_agent { "RSpec" }
     last_active_at { Time.current }
     revoked_at { nil }
+    permissions { nil }
+    share_link { nil }
   end
 end

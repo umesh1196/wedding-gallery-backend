@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_09_001000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_09_004100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -70,14 +70,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_09_001000) do
     t.datetime "last_active_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
     t.string "last_ip"
     t.string "last_user_agent"
+    t.string "permissions"
     t.datetime "revoked_at"
     t.string "role", default: "guest", null: false
     t.string "session_token_digest", null: false
+    t.uuid "share_link_id"
     t.datetime "updated_at", null: false
     t.string "visitor_name"
     t.uuid "wedding_id", null: false
     t.index ["last_active_at"], name: "index_gallery_sessions_on_last_active_at"
     t.index ["session_token_digest"], name: "index_gallery_sessions_on_session_token_digest", unique: true
+    t.index ["share_link_id", "created_at"], name: "index_gallery_sessions_on_share_link_id_and_created_at"
+    t.index ["share_link_id"], name: "index_gallery_sessions_on_share_link_id"
     t.index ["wedding_id"], name: "index_gallery_sessions_on_wedding_id"
   end
 
@@ -132,6 +136,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_09_001000) do
     t.index ["upload_batch_id"], name: "index_photos_on_upload_batch_id"
     t.index ["wedding_id", "created_at"], name: "index_photos_on_wedding_id_and_created_at", where: "((processing_status)::text = 'ready'::text)"
     t.index ["wedding_id"], name: "index_photos_on_wedding_id"
+  end
+
+  create_table "share_links", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.uuid "created_by_id", null: false
+    t.datetime "expires_at", null: false
+    t.string "label", null: false
+    t.string "permissions", null: false
+    t.datetime "revoked_at"
+    t.string "token_digest", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "wedding_id", null: false
+    t.index ["created_by_id"], name: "index_share_links_on_created_by_id"
+    t.index ["token_digest"], name: "index_share_links_on_token_digest", unique: true
+    t.index ["wedding_id", "created_at"], name: "index_share_links_on_wedding_id_and_created_at"
+    t.index ["wedding_id"], name: "index_share_links_on_wedding_id"
   end
 
   create_table "shortlist_photos", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -245,6 +265,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_09_001000) do
   add_foreign_key "download_requests", "gallery_sessions"
   add_foreign_key "download_requests", "shortlists"
   add_foreign_key "download_requests", "weddings"
+  add_foreign_key "gallery_sessions", "share_links"
   add_foreign_key "gallery_sessions", "weddings"
   add_foreign_key "likes", "gallery_sessions"
   add_foreign_key "likes", "photos"
@@ -252,6 +273,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_09_001000) do
   add_foreign_key "photos", "studio_storage_connections"
   add_foreign_key "photos", "upload_batches"
   add_foreign_key "photos", "weddings"
+  add_foreign_key "share_links", "gallery_sessions", column: "created_by_id"
+  add_foreign_key "share_links", "weddings"
   add_foreign_key "shortlist_photos", "photos"
   add_foreign_key "shortlist_photos", "shortlists"
   add_foreign_key "shortlists", "gallery_sessions"

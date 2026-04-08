@@ -65,6 +65,18 @@ module Api
         def route_matches_session_wedding?
           current_wedding.slug == params[:wedding_slug] && current_studio.slug == params[:studio_slug]
         end
+
+        def ensure_likes_allowed!
+          return if current_gallery_session.allows_likes?
+
+          render_error("Likes are not allowed for this shared gallery link", status: :forbidden, code: "forbidden")
+        end
+
+        def ensure_downloads_allowed!
+          return if current_gallery_session.allows_downloads?
+
+          render_error("Downloads are not allowed for this shared gallery link", status: :forbidden, code: "forbidden")
+        end
       end
     end
   end
