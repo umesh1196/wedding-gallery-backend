@@ -31,3 +31,8 @@
 # Ignore key files for decrypting credentials and more.
 /config/*.key
 
+# Ignore graphify-generated artifacts and local graphify state.
+/graphify-out/
+/app/graphify-out/
+/.graphify_python
+.zshrc
