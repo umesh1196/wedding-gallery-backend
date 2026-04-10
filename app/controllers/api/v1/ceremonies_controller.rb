@@ -100,7 +100,7 @@ module Api
       end
 
       def ceremony_params
-        params.require(:ceremony).permit(:name, :slug, :cover_image_url, :description, :sort_order)
+        params.require(:ceremony).permit(:name, :slug, :cover_image_url, :description, :sort_order, :scheduled_at)
       end
     end
   end

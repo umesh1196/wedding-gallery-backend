@@ -11,7 +11,8 @@ class ZipGenerationJob < ApplicationJob
       wedding: request.wedding,
       gallery_session: request.gallery_session,
       scope_type: request.scope_type,
-      ceremony_slug: request.ceremony&.slug
+      ceremony_slug: request.ceremony&.slug,
+      photo_ids: request.selected_photo_ids
     ).call
 
     raise "No photos available for download" if resolved[:photos].empty?

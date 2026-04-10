@@ -16,12 +16,14 @@ module GalleryDownloads
       end
     end
 
-    def allow_bulk_scope?(scope_type)
+    def allow_bulk_scope?(scope_type, photo_ids: [])
       case @wedding.allow_download
       when "all"
-        true
+        scope_type != "selected_photos" || photo_ids.present?
       when "shortlist"
-        scope_type == "shortlist" && shortlist.present? && shortlist.shortlist_photos.exists?
+        return scope_type == "shortlist" && shortlist.present? && shortlist.shortlist_photos.exists? if scope_type != "selected_photos"
+
+        photo_ids.present? && (photo_ids - shortlisted_photo_ids.to_a).empty?
       else
         false
       end

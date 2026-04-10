@@ -21,7 +21,8 @@ module Api
             wedding: current_wedding,
             gallery_session: current_gallery_session,
             scope_type: params.require(:type),
-            ceremony_slug: params[:ceremony_slug]
+            ceremony_slug: params[:ceremony_slug],
+            photo_ids: params[:photo_ids]
           ).call
 
           render_success(DownloadRequestBlueprint.render_as_hash(request_record), status: :accepted)

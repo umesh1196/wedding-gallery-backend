@@ -71,6 +71,44 @@ RSpec.describe "Api::V1::GalleryDownloads", type: :request do
 
       expect(response).to have_http_status(:forbidden)
     end
+
+    it "creates a selected photos archive request" do
+      post "/api/v1/g/#{studio.slug}/#{wedding.slug}/downloads",
+           params: { type: "selected_photos", photo_ids: [ photo.id ] },
+           headers: headers,
+           as: :json
+
+      request_record = DownloadRequest.order(:created_at).last
+
+      expect(response).to have_http_status(:accepted)
+      expect(request_record.scope_type).to eq("selected_photos")
+      expect(request_record.selected_photo_ids).to eq([ photo.id ])
+    end
+
+    it "blocks selected photo downloads outside the shortlist when shortlist-only" do
+      wedding.update!(allow_download: "shortlist")
+
+      post "/api/v1/g/#{studio.slug}/#{wedding.slug}/downloads",
+           params: { type: "selected_photos", photo_ids: [ photo.id ] },
+           headers: headers,
+           as: :json
+
+      expect(response).to have_http_status(:forbidden)
+    end
+
+    it "allows selected photo downloads when all selected photos are in the shortlist" do
+      wedding.update!(allow_download: "shortlist")
+      shortlist = create(:shortlist, wedding: wedding, gallery_session: gallery_session)
+      create(:shortlist_photo, shortlist: shortlist, photo: photo)
+
+      post "/api/v1/g/#{studio.slug}/#{wedding.slug}/downloads",
+           params: { type: "selected_photos", photo_ids: [ photo.id ] },
+           headers: headers,
+           as: :json
+
+      expect(response).to have_http_status(:accepted)
+      expect(response.parsed_body.dig("data", "scope_type")).to eq("selected_photos")
+    end
   end
 
   describe "GET /api/v1/g/:studio_slug/:wedding_slug/downloads/:id" do

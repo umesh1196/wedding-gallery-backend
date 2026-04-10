@@ -1,6 +1,7 @@
 FactoryBot.define do
   factory :gallery_session do
     association :wedding
+    guest_identity { nil }
     sequence(:session_token_digest) { |n| GallerySession.digest_token("gallery-session-token-#{n}") }
     visitor_name { "Guest Viewer" }
     role { "guest" }

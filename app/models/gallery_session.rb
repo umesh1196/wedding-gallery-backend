@@ -4,6 +4,7 @@ class GallerySession < ApplicationRecord
   SHARE_PERMISSIONS = ShareLink::PERMISSIONS.freeze
 
   belongs_to :wedding
+  belongs_to :guest_identity, optional: true
   belongs_to :share_link, optional: true
   has_many :album_share_links, foreign_key: :created_by_gallery_session_id, dependent: :nullify
   has_many :created_albums, class_name: "Album", foreign_key: :created_by_gallery_session_id, dependent: :nullify
@@ -21,10 +22,11 @@ class GallerySession < ApplicationRecord
 
   scope :available, -> { where(revoked_at: nil) }
 
-  def self.issue_for!(wedding:, visitor_name: nil, role: "guest", ip: nil, user_agent: nil, share_link: nil, permissions: nil)
+  def self.issue_for!(wedding:, visitor_name: nil, role: "guest", ip: nil, user_agent: nil, share_link: nil, permissions: nil, guest_identity: nil)
     raw_token = SecureRandom.urlsafe_base64(32)
     session = create!(
       wedding: wedding,
+      guest_identity: guest_identity,
       session_token_digest: digest_token(raw_token),
       visitor_name: visitor_name,
       role: role,

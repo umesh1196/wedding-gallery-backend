@@ -1,5 +1,5 @@
 class DownloadRequest < ApplicationRecord
-  SCOPE_TYPES = %w[ceremony shortlist full_gallery].freeze
+  SCOPE_TYPES = %w[ceremony shortlist full_gallery selected_photos].freeze
   STATUSES = %w[queued processing ready failed expired].freeze
   EXPIRY_WINDOW = 24.hours
 
@@ -29,6 +29,7 @@ class DownloadRequest < ApplicationRecord
   def scope_reference_presence
     errors.add(:ceremony, "must exist for ceremony downloads") if scope_type == "ceremony" && ceremony.blank?
     errors.add(:shortlist, "must exist for shortlist downloads") if scope_type == "shortlist" && shortlist.blank?
+    errors.add(:selected_photo_ids, "must be present for selected photo downloads") if scope_type == "selected_photos" && selected_photo_ids.blank?
   end
 
   def scope_reference_wedding_matches

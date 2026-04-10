@@ -31,10 +31,29 @@ RSpec.describe "Api::V1::Gallery", type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(response.parsed_body.dig("data", "session_token")).to be_present
+      expect(response.parsed_body.dig("data", "guest_identity_token")).to be_present
       expect(response.parsed_body.dig("data", "gallery", "couple_name")).to eq("Priya & Arjun")
       expect(response.parsed_body.dig("data", "gallery", "branding", "slug")).to eq("priya-studio")
       expect(GallerySession.count).to eq(1)
       expect(GallerySession.last.visitor_name).to eq("Asha")
+      expect(GallerySession.last.guest_identity).to be_present
+    end
+
+    it "reuses the same guest identity token for a returning guest" do
+      post "/api/v1/g/#{studio.slug}/#{wedding.slug}/verify",
+           params: { password: "gallerypass123", visitor_name: "Asha" },
+           as: :json
+
+      first_identity_token = response.parsed_body.dig("data", "guest_identity_token")
+      first_identity_id = GallerySession.last.guest_identity_id
+
+      post "/api/v1/g/#{studio.slug}/#{wedding.slug}/verify",
+           params: { password: "gallerypass123", visitor_name: "Asha", guest_identity_token: first_identity_token },
+           as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body.dig("data", "guest_identity_token")).to eq(first_identity_token)
+      expect(GallerySession.last.guest_identity_id).to eq(first_identity_id)
     end
 
     it "returns 401 for an invalid password" do

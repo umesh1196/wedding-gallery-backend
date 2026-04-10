@@ -11,9 +11,11 @@ module Api
         end
 
         verify_rate_limiter.reset!
+        guest_identity, issued_guest_identity_token = resolved_guest_identity
         _session, token = GallerySession.issue_for!(
           wedding: wedding,
           visitor_name: params[:visitor_name].presence,
+          guest_identity: guest_identity,
           ip: request.remote_ip,
           user_agent: request.user_agent
         )
@@ -21,6 +23,7 @@ module Api
         render_success(
           {
             session_token: token,
+            guest_identity_token: issued_guest_identity_token || params[:guest_identity_token].presence,
             gallery: gallery_payload(wedding)
           }
         )
@@ -54,6 +57,13 @@ module Api
           wedding_slug: params[:wedding_slug],
           ip: request.remote_ip
         )
+      end
+
+      def resolved_guest_identity
+        existing = GuestIdentity.find_for_token(params[:guest_identity_token], wedding: wedding)
+        return [ existing, nil ] if existing.present?
+
+        GuestIdentity.issue_for!(wedding: wedding, visitor_name: params[:visitor_name].presence)
       end
     end
   end

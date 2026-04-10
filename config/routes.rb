@@ -15,6 +15,7 @@ Rails.application.routes.draw do
         get ":studio_slug/:wedding_slug/ceremonies/:ceremony_slug/albums", to: "albums#index"
         post ":studio_slug/:wedding_slug/ceremonies/:ceremony_slug/albums", to: "albums#create"
         get ":studio_slug/:wedding_slug/ceremonies/:ceremony_slug/albums/:slug", to: "albums#show"
+        get ":studio_slug/:wedding_slug/ceremonies/:ceremony_slug/albums/:slug/photos", to: "albums#photos"
         patch ":studio_slug/:wedding_slug/ceremonies/:ceremony_slug/albums/:slug", to: "albums#update"
         delete ":studio_slug/:wedding_slug/ceremonies/:ceremony_slug/albums/:slug", to: "albums#destroy"
         post ":studio_slug/:wedding_slug/ceremonies/:ceremony_slug/albums/:album_slug/photos", to: "album_photos#create"

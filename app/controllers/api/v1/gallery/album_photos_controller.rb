@@ -48,7 +48,15 @@ module Api
         end
 
         def album
-          @album ||= ceremony.albums.where(album_type: "user_created", created_by_gallery_session: current_gallery_session).find_by!(slug: params[:album_slug])
+          @album ||= ceremony.albums.where(album_type: "user_created", created_by_gallery_session_id: guest_session_ids_scope).find_by!(slug: params[:album_slug])
+        end
+
+        def guest_session_ids_scope
+          if current_gallery_session.guest_identity_id.present?
+            current_gallery_session.guest_identity.gallery_sessions.select(:id)
+          else
+            [ current_gallery_session.id ]
+          end
         end
 
         def photo_ids

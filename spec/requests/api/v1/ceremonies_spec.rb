@@ -11,13 +11,21 @@ RSpec.describe "Api::V1::Ceremonies", type: :request do
   describe "POST /api/v1/weddings/:wedding_slug/ceremonies" do
     it "creates a ceremony for the current studio wedding" do
       post "/api/v1/weddings/#{wedding.slug}/ceremonies",
-           params: { ceremony: { name: "Haldi Ceremony", description: "The turmeric ceremony", sort_order: 2 } },
+           params: {
+             ceremony: {
+               name: "Haldi Ceremony",
+               description: "The turmeric ceremony",
+               sort_order: 2,
+               scheduled_at: "2026-02-08T19:00:00Z"
+             }
+           },
            headers: headers,
            as: :json
 
       expect(response).to have_http_status(:created)
       expect(response.parsed_body.dig("data", "slug")).to eq("haldi-ceremony")
       expect(response.parsed_body.dig("data", "cover_image_key")).to be_nil
+      expect(response.parsed_body.dig("data", "scheduled_at")).to eq("2026-02-08T19:00:00.000Z")
       expect(wedding.ceremonies.count).to eq(1)
     end
   end
@@ -46,6 +54,7 @@ RSpec.describe "Api::V1::Ceremonies", type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(response.parsed_body.dig("data", "slug")).to eq("haldi-ceremony")
+      expect(response.parsed_body.dig("data", "scheduled_at")).to eq(ceremony.scheduled_at&.as_json)
     end
   end
 
@@ -93,13 +102,20 @@ RSpec.describe "Api::V1::Ceremonies", type: :request do
       ceremony = create(:ceremony, wedding: wedding, slug: "haldi")
 
       patch "/api/v1/weddings/#{wedding.slug}/ceremonies/#{ceremony.slug}",
-            params: { ceremony: { name: "Haldi Updated", sort_order: 5 } },
+            params: {
+              ceremony: {
+                name: "Haldi Updated",
+                sort_order: 5,
+                scheduled_at: "2026-02-08T20:00:00Z"
+              }
+            },
             headers: headers,
             as: :json
 
       expect(response).to have_http_status(:ok)
       expect(response.parsed_body.dig("data", "slug")).to eq("haldi-updated")
       expect(response.parsed_body.dig("data", "sort_order")).to eq(5)
+      expect(response.parsed_body.dig("data", "scheduled_at")).to eq("2026-02-08T20:00:00.000Z")
     end
   end
 

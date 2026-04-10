@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_09_012200) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_10_093000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -73,11 +73,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_09_012200) do
     t.text "description"
     t.string "name", null: false
     t.integer "photo_count", default: 0, null: false
+    t.datetime "scheduled_at"
     t.string "slug", null: false
     t.integer "sort_order", default: 0, null: false
     t.datetime "updated_at", null: false
     t.integer "video_count", default: 0, null: false
     t.uuid "wedding_id", null: false
+    t.index ["wedding_id", "scheduled_at"], name: "index_ceremonies_on_wedding_id_and_scheduled_at"
     t.index ["wedding_id", "slug"], name: "index_ceremonies_on_wedding_id_and_slug", unique: true
     t.index ["wedding_id", "sort_order"], name: "index_ceremonies_on_wedding_id_and_sort_order"
     t.index ["wedding_id"], name: "index_ceremonies_on_wedding_id"
@@ -104,6 +106,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_09_012200) do
     t.string "filename", null: false
     t.uuid "gallery_session_id", null: false
     t.string "scope_type", null: false
+    t.jsonb "selected_photo_ids", default: [], null: false
     t.uuid "shortlist_id"
     t.string "status", default: "queued", null: false
     t.datetime "updated_at", null: false
@@ -118,6 +121,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_09_012200) do
 
   create_table "gallery_sessions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.uuid "guest_identity_id"
     t.datetime "last_active_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
     t.string "last_ip"
     t.string "last_user_agent"
@@ -129,11 +133,24 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_09_012200) do
     t.datetime "updated_at", null: false
     t.string "visitor_name"
     t.uuid "wedding_id", null: false
+    t.index ["guest_identity_id"], name: "index_gallery_sessions_on_guest_identity_id"
     t.index ["last_active_at"], name: "index_gallery_sessions_on_last_active_at"
     t.index ["session_token_digest"], name: "index_gallery_sessions_on_session_token_digest", unique: true
     t.index ["share_link_id", "created_at"], name: "index_gallery_sessions_on_share_link_id_and_created_at"
     t.index ["share_link_id"], name: "index_gallery_sessions_on_share_link_id"
     t.index ["wedding_id"], name: "index_gallery_sessions_on_wedding_id"
+  end
+
+  create_table "guest_identities", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "normalized_visitor_name"
+    t.string "token_digest", null: false
+    t.datetime "updated_at", null: false
+    t.string "visitor_name"
+    t.uuid "wedding_id", null: false
+    t.index ["token_digest"], name: "index_guest_identities_on_token_digest", unique: true
+    t.index ["wedding_id", "normalized_visitor_name"], name: "index_guest_identities_on_wedding_and_normalized_name", unique: true, where: "(normalized_visitor_name IS NOT NULL)"
+    t.index ["wedding_id"], name: "index_guest_identities_on_wedding_id"
   end
 
   create_table "likes", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -181,8 +198,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_09_012200) do
     t.index ["ceremony_id", "source_provider", "source_bucket", "source_key", "source_etag"], name: "idx_photos_unique_import_source", unique: true, where: "(source_key IS NOT NULL)"
     t.index ["ceremony_id"], name: "idx_photos_cover_per_ceremony", where: "(is_cover = true)"
     t.index ["ceremony_id"], name: "index_photos_on_ceremony_id"
-    t.index ["ingestion_status", "created_at"], name: "index_photos_on_ingestion_status_and_created_at", where: "((ingestion_status)::text = ANY ((ARRAY['pending_import'::character varying, 'queued'::character varying, 'uploading'::character varying])::text[]))"
-    t.index ["processing_status", "created_at"], name: "index_photos_on_processing_status_and_created_at", where: "((processing_status)::text = ANY ((ARRAY['pending'::character varying, 'processing'::character varying])::text[]))"
+    t.index ["ingestion_status", "created_at"], name: "index_photos_on_ingestion_status_and_created_at", where: "((ingestion_status)::text = ANY (ARRAY[('pending_import'::character varying)::text, ('queued'::character varying)::text, ('uploading'::character varying)::text]))"
+    t.index ["processing_status", "created_at"], name: "index_photos_on_processing_status_and_created_at", where: "((processing_status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text]))"
     t.index ["studio_storage_connection_id"], name: "index_photos_on_studio_storage_connection_id"
     t.index ["upload_batch_id"], name: "index_photos_on_upload_batch_id"
     t.index ["wedding_id", "created_at"], name: "index_photos_on_wedding_id_and_created_at", where: "((processing_status)::text = 'ready'::text)"
@@ -325,8 +342,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_09_012200) do
   add_foreign_key "download_requests", "gallery_sessions"
   add_foreign_key "download_requests", "shortlists"
   add_foreign_key "download_requests", "weddings"
+  add_foreign_key "gallery_sessions", "guest_identities"
   add_foreign_key "gallery_sessions", "share_links"
   add_foreign_key "gallery_sessions", "weddings"
+  add_foreign_key "guest_identities", "weddings"
   add_foreign_key "likes", "gallery_sessions"
   add_foreign_key "likes", "photos"
   add_foreign_key "photos", "ceremonies"
