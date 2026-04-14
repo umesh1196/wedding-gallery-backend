@@ -346,7 +346,7 @@ GEM
     ruby-vips (2.3.0)
       ffi (~> 1.12)
       logger
-    rubyzip (2.3.2)
+    rubyzip (3.2.2)
     securerandom (0.4.1)
     sentry-rails (6.5.0)
       railties (>= 5.2.0)
@@ -434,7 +434,7 @@ DEPENDENCIES
   rspec-rails (~> 6.0)
   rubocop-rails-omakase
   ruby-vips
-  rubyzip (~> 2.3)
+  rubyzip (~> 3.2)
   sentry-rails
   solid_cable
   solid_cache
