@@ -9,7 +9,7 @@ gem "jwt", "~> 2.7"
 gem "bcrypt", "~> 3.1.7"
 
 # Serialization
-gem "blueprinter", "~> 1.0"
+gem "blueprinter", "~> 1.3"
 
 # Pagination
 gem "pagy", "~> 7.0"
