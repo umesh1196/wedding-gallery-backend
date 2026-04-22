@@ -159,7 +159,7 @@ GEM
       reline (>= 0.4.2)
     jmespath (1.6.2)
     json (2.19.3)
-    jwt (2.10.2)
+    jwt (3.1.2)
       base64
     kamal (2.11.0)
       activesupport (>= 7.0)
@@ -423,7 +423,7 @@ DEPENDENCIES
   dotenv-rails
   factory_bot_rails
   image_processing (~> 1.2)
-  jwt (~> 2.7)
+  jwt (~> 3.1)
   kamal
   marcel
   pagy (~> 7.0)
