@@ -49,6 +49,12 @@ module Api
         render_error(e.message, status: :unprocessable_entity, code: "invalid_upload")
       end
 
+      def run_face_recognition
+        pending_count = wedding.photos.face_recognition_needed.count
+        FaceIndexJob.perform_later(wedding_id: wedding.id)
+        render_success({ queued: true, pending_count: pending_count })
+      end
+
       private
 
       def wedding

@@ -22,21 +22,28 @@ class PhotoImportJob < ApplicationJob
       processing_status: "pending",
       ingestion_error: nil
     )
-    if photo.upload_batch
-      photo.upload_batch.increment!(:completed_files)
-      photo.upload_batch.refresh_status!
-    end
 
+    tick_batch_counter(photo, :completed_files)
     JobDispatch.enqueue(PhotoProcessingJob, photo.id)
   rescue StandardError => e
     photo&.update!(ingestion_status: "failed", ingestion_error: e.message)
-    if photo&.upload_batch
-      photo.upload_batch.increment!(:failed_files)
-      photo.upload_batch.refresh_status!
-    end
+    tick_batch_counter(photo, :failed_files)
     raise
   ensure
     tempfile&.close
     tempfile&.unlink
+  end
+
+  private
+
+  # Atomically increment one counter on the batch and only call refresh_status!
+  # when all files are accounted for. This avoids N redundant UPDATE calls on
+  # large imports where hundreds of jobs complete in parallel.
+  def tick_batch_counter(photo, counter)
+    return unless photo&.upload_batch_id
+
+    UploadBatch.update_counters(photo.upload_batch_id, counter => 1)
+    batch = UploadBatch.find(photo.upload_batch_id)
+    batch.refresh_status! if batch.accounted_files >= batch.total_files
   end
 end

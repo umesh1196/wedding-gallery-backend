@@ -6,7 +6,7 @@ module Api
         MAX_LIMIT = 100
 
         def index
-          photos = ceremony.photos.ready.order(:sort_order, :id)
+          photos = ceremony.photos.ready.includes(:people).order(:sort_order, :id)
           photos = apply_cursor(photos)
           photos = photos.limit(limit + 1)
           records = photos.to_a

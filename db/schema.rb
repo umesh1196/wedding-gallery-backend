@@ -10,10 +10,11 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_10_093000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_26_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
+  enable_extension "vector"
 
   create_table "album_photos", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "album_id", null: false
@@ -163,6 +164,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_10_093000) do
     t.index ["photo_id"], name: "index_likes_on_photo_id"
   end
 
+  create_table "people", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "avatar_url"
+    t.datetime "created_at", null: false
+    t.boolean "is_known", default: false, null: false
+    t.string "label", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "wedding_id", null: false
+    t.index ["wedding_id", "label"], name: "index_people_on_wedding_id_and_label", unique: true
+    t.index ["wedding_id"], name: "index_people_on_wedding_id"
+  end
+
+  create_table "person_photos", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.uuid "person_id", null: false
+    t.uuid "photo_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["person_id", "photo_id"], name: "index_person_photos_on_person_and_photo", unique: true
+    t.index ["person_id"], name: "index_person_photos_on_person_id"
+    t.index ["photo_id"], name: "index_person_photos_on_photo_id"
+  end
+
   create_table "photos", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.virtual "aspect_ratio", type: :decimal, precision: 5, scale: 3, as: "\nCASE\n    WHEN (height > 0) THEN round(((width)::numeric / (height)::numeric), 3)\n    ELSE (0)::numeric\nEND", stored: true
     t.text "blur_data_uri"
@@ -198,12 +220,40 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_10_093000) do
     t.index ["ceremony_id", "source_provider", "source_bucket", "source_key", "source_etag"], name: "idx_photos_unique_import_source", unique: true, where: "(source_key IS NOT NULL)"
     t.index ["ceremony_id"], name: "idx_photos_cover_per_ceremony", where: "(is_cover = true)"
     t.index ["ceremony_id"], name: "index_photos_on_ceremony_id"
-    t.index ["ingestion_status", "created_at"], name: "index_photos_on_ingestion_status_and_created_at", where: "((ingestion_status)::text = ANY (ARRAY[('pending_import'::character varying)::text, ('queued'::character varying)::text, ('uploading'::character varying)::text]))"
-    t.index ["processing_status", "created_at"], name: "index_photos_on_processing_status_and_created_at", where: "((processing_status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text]))"
+    t.index ["ingestion_status", "created_at"], name: "index_photos_on_ingestion_status_and_created_at", where: "((ingestion_status)::text = ANY ((ARRAY['pending_import'::character varying, 'queued'::character varying, 'uploading'::character varying])::text[]))"
+    t.index ["processing_status", "created_at"], name: "index_photos_on_processing_status_and_created_at", where: "((processing_status)::text = ANY ((ARRAY['pending'::character varying, 'processing'::character varying])::text[]))"
     t.index ["studio_storage_connection_id"], name: "index_photos_on_studio_storage_connection_id"
     t.index ["upload_batch_id"], name: "index_photos_on_upload_batch_id"
     t.index ["wedding_id", "created_at"], name: "index_photos_on_wedding_id_and_created_at", where: "((processing_status)::text = 'ready'::text)"
     t.index ["wedding_id"], name: "index_photos_on_wedding_id"
+  end
+
+  create_table "print_selection_buckets", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.uuid "created_by_studio_id", null: false
+    t.datetime "locked_at"
+    t.string "name", null: false
+    t.integer "selected_count", default: 0, null: false
+    t.integer "selection_limit", default: 0, null: false
+    t.string "slug", null: false
+    t.integer "sort_order", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.uuid "wedding_id", null: false
+    t.index ["created_by_studio_id"], name: "index_print_selection_buckets_on_created_by_studio_id"
+    t.index ["wedding_id", "slug"], name: "index_print_selection_buckets_on_wedding_id_and_slug", unique: true
+    t.index ["wedding_id", "sort_order"], name: "index_print_selection_buckets_on_wedding_id_and_sort_order"
+    t.index ["wedding_id"], name: "index_print_selection_buckets_on_wedding_id"
+  end
+
+  create_table "print_selection_photos", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.uuid "photo_id", null: false
+    t.uuid "print_selection_bucket_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["photo_id"], name: "index_print_selection_photos_on_photo_id"
+    t.index ["print_selection_bucket_id", "created_at"], name: "idx_print_selection_bucket_created_at"
+    t.index ["print_selection_bucket_id", "photo_id"], name: "idx_print_selection_bucket_photo", unique: true
+    t.index ["print_selection_bucket_id"], name: "index_print_selection_photos_on_print_selection_bucket_id"
   end
 
   create_table "share_links", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -348,10 +398,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_10_093000) do
   add_foreign_key "guest_identities", "weddings"
   add_foreign_key "likes", "gallery_sessions"
   add_foreign_key "likes", "photos"
+  add_foreign_key "people", "weddings"
+  add_foreign_key "person_photos", "people"
+  add_foreign_key "person_photos", "photos"
   add_foreign_key "photos", "ceremonies"
   add_foreign_key "photos", "studio_storage_connections"
   add_foreign_key "photos", "upload_batches"
   add_foreign_key "photos", "weddings"
+  add_foreign_key "print_selection_buckets", "studios", column: "created_by_studio_id"
+  add_foreign_key "print_selection_buckets", "weddings"
+  add_foreign_key "print_selection_photos", "photos"
+  add_foreign_key "print_selection_photos", "print_selection_buckets"
   add_foreign_key "share_links", "gallery_sessions", column: "created_by_id"
   add_foreign_key "share_links", "weddings"
   add_foreign_key "shortlist_photos", "photos"

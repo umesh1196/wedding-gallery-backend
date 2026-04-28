@@ -1,6 +1,7 @@
 class Studio < ApplicationRecord
   has_secure_password
   has_many :weddings, dependent: :destroy
+  has_many :print_selection_buckets, foreign_key: :created_by_studio_id
   has_many :studio_storage_connections, dependent: :destroy
   has_many :upload_batches, dependent: :destroy
 

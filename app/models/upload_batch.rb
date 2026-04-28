@@ -9,12 +9,15 @@ class UploadBatch < ApplicationRecord
   validates :source_type, inclusion: { in: SOURCE_TYPES }
   validates :status, inclusion: { in: STATUSES }
 
+  def accounted_files
+    completed_files + failed_files + skipped_files
+  end
+
   def refresh_status!
-    accounted = completed_files + failed_files + skipped_files
     new_status =
-      if accounted >= total_files && failed_files.positive?
+      if accounted_files >= total_files && failed_files.positive?
         "partial"
-      elsif accounted >= total_files
+      elsif accounted_files >= total_files
         "completed"
       else
         "in_progress"

@@ -29,6 +29,8 @@ class PhotoProcessingJob < ApplicationJob
       processing_status: "ready",
       processed_at: Time.current
     )
+
+    FaceIndexJob.perform_later(photo.id)
   rescue StandardError => e
     photo&.update!(processing_status: "failed", processing_error: e.message)
     raise

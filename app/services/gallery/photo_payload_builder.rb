@@ -11,6 +11,7 @@ module Gallery
 
       {
         id: @photo.id,
+        ceremony_slug: @photo.ceremony&.slug,
         thumbnail_url: urls[:thumbnail],
         preview_url: urls[:preview],
         blur_hash: urls[:blur],
@@ -18,7 +19,8 @@ module Gallery
         height: @photo.height,
         comment_count: @photo.comments_count,
         is_liked: @liked_photo_ids.include?(@photo.id),
-        is_shortlisted: @shortlisted_photo_ids.include?(@photo.id)
+        is_shortlisted: @shortlisted_photo_ids.include?(@photo.id),
+        people: @photo.people.map { |p| { id: p.id, label: p.label } }
       }
     end
   end

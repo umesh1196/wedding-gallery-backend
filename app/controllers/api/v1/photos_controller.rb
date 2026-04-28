@@ -78,6 +78,16 @@ module Api
         render_success(PhotoBlueprint.render_as_hash(photo))
       end
 
+      def retry_face_recognition
+        unless photo.face_recognition_status == "failed"
+          return render_error("Face recognition is not retryable", status: :unprocessable_entity, code: "validation_error")
+        end
+
+        photo.update!(face_recognition_status: "pending", face_recognition_error: nil)
+        FaceIndexJob.perform_later(photo.id)
+        render_success(PhotoBlueprint.render_as_hash(photo))
+      end
+
       def destroy
         keys = [ photo.original_key, photo.thumbnail_key ].compact
         photo.destroy!

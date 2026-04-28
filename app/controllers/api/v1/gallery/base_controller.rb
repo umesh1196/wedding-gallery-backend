@@ -36,7 +36,7 @@ module Api
         end
 
         def liked_photo_ids
-          @liked_photo_ids ||= Like.where(gallery_session: current_gallery_session).pluck(:photo_id).to_set
+          @liked_photo_ids ||= Like.where(gallery_session_id: guest_session_ids_scope).pluck(:photo_id).to_set
         end
 
         def shortlisted_photo_ids
@@ -56,6 +56,14 @@ module Api
 
         def route_matches_session_wedding?
           current_wedding.slug == params[:wedding_slug] && current_studio.slug == params[:studio_slug]
+        end
+
+        def guest_session_ids_scope
+          if current_gallery_session.guest_identity_id.present?
+            current_gallery_session.guest_identity.gallery_sessions.select(:id)
+          else
+            [ current_gallery_session.id ]
+          end
         end
 
         def ensure_likes_allowed!

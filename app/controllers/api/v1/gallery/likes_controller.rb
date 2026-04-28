@@ -11,14 +11,19 @@ module Api
         end
 
         def destroy
-          Like.where(photo: photo, gallery_session: current_gallery_session).delete_all
+          Like.where(photo: photo, gallery_session_id: guest_session_ids_scope).delete_all
 
           render_success(photo_state(photo))
         end
 
         def index
-          likes = Like.includes(:photo).where(gallery_session: current_gallery_session)
-          photos = likes.map(&:photo).sort_by { |item| [ item.sort_order, item.id ] }
+          photos =
+            Photo
+              .ready
+              .joins(:likes)
+              .where(wedding: current_wedding, likes: { gallery_session_id: guest_session_ids_scope })
+              .distinct
+              .order(:sort_order, :id)
 
           render_success(photos.map { |item| gallery_photo_payload(item) })
         end

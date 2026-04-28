@@ -11,6 +11,7 @@ RSpec.describe "Api::V1::GalleryInteractions", type: :request do
   let!(:second_photo) { create(:photo, wedding: wedding, ceremony: ceremony, sort_order: 2, width: 3200, height: 2133) }
 
   before do
+    allow(GallerySession).to receive(:digest_token).and_call_original
     allow(GallerySession).to receive(:digest_token).with(session_token).and_return(session_record.session_token_digest)
     allow_any_instance_of(PhotoUrlBuilder).to receive(:urls).and_return(
       {
@@ -57,6 +58,25 @@ RSpec.describe "Api::V1::GalleryInteractions", type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.parsed_body.dig("data").size).to eq(1)
       expect(response.parsed_body.dig("data", 0, "id")).to eq(first_photo.id)
+      expect(response.parsed_body.dig("data", 0, "ceremony_slug")).to eq(ceremony.slug)
+    end
+
+    it "lists liked photos across sessions for the same guest identity" do
+      identity = create(:guest_identity, wedding: wedding, visitor_name: "Asha")
+      previous_session = create(:gallery_session, wedding: wedding, guest_identity: identity, visitor_name: "Asha")
+      current_session = create(:gallery_session, wedding: wedding, guest_identity: identity, visitor_name: "Asha")
+      current_token = "gallery-session-token-shared-identity"
+
+      create(:like, photo: second_photo, gallery_session: previous_session)
+
+      allow(GallerySession).to receive(:digest_token).with(current_token).and_return(current_session.session_token_digest)
+
+      get "/api/v1/g/#{studio.slug}/#{wedding.slug}/likes",
+          headers: { "X-Gallery-Token" => current_token },
+          as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body.dig("data").map { |row| row["id"] }).to include(second_photo.id)
     end
   end
 
@@ -135,6 +155,26 @@ RSpec.describe "Api::V1::GalleryInteractions", type: :request do
       expect(response.parsed_body.dig("data", 0, "is_shortlisted")).to eq(false)
       expect(response.parsed_body.dig("data", 1, "is_liked")).to eq(false)
       expect(response.parsed_body.dig("data", 1, "is_shortlisted")).to eq(true)
+    end
+
+    it "includes liked state from another session of the same guest identity" do
+      identity = create(:guest_identity, wedding: wedding, visitor_name: "Umesh")
+      previous_session = create(:gallery_session, wedding: wedding, guest_identity: identity, visitor_name: "Umesh")
+      current_session = create(:gallery_session, wedding: wedding, guest_identity: identity, visitor_name: "Umesh")
+      current_token = "gallery-session-token-liked-state"
+
+      create(:like, photo: second_photo, gallery_session: previous_session)
+
+      allow(GallerySession).to receive(:digest_token).with(current_token).and_return(current_session.session_token_digest)
+
+      get "/api/v1/g/#{studio.slug}/#{wedding.slug}/ceremonies/#{ceremony.slug}/photos",
+          headers: { "X-Gallery-Token" => current_token }
+
+      payload = response.parsed_body.fetch("data")
+      liked_row = payload.find { |row| row["id"] == second_photo.id }
+
+      expect(response).to have_http_status(:ok)
+      expect(liked_row["is_liked"]).to eq(true)
     end
   end
 end

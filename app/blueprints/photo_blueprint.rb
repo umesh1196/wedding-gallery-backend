@@ -2,7 +2,8 @@ class PhotoBlueprint < Blueprinter::Base
   identifier :id
 
   fields :original_filename, :file_extension, :width, :height, :aspect_ratio,
-         :sort_order, :is_cover, :ingestion_status, :processing_status
+         :sort_order, :is_cover, :ingestion_status, :processing_status,
+         :face_recognition_status, :face_recognition_error
 
   field :urls do |photo|
     photo.processing_status == "ready" ? photo.urls : {}
