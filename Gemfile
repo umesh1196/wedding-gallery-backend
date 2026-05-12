@@ -18,7 +18,7 @@ gem "pagy", "~> 7.0"
 gem "dotenv-rails"
 
 # S3-compatible storage (Cloudflare R2, B2, MinIO, AWS S3)
-gem "aws-sdk-s3", "~> 1.0"
+gem "aws-sdk-s3", "~> 1.221"
 
 # MIME type detection
 gem "marcel"
